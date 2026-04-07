@@ -1,0 +1,91 @@
+{
+  "storyboard": {
+    "title": "스토리보드",
+    "loading": "스토리보드 로딩 중...",
+    "empty": "아직 샷이 없습니다",
+    "loadFailed": "스토리보드 로딩 실패",
+    "shotLoadFailed": "샷 {{id}} 로딩 실패",
+    "shot": "샷",
+    "size": {
+      "small": "소",
+      "medium": "중",
+      "large": "대"
+    },
+    "status": {
+      "pending": "대기 중",
+      "promptsReady": "프롬프트 준비 완료",
+      "imageGenerated": "이미지 생성됨",
+      "imageApproved": "이미지 승인됨",
+      "videoGenerated": "비디오 생성됨",
+      "approved": "승인됨"
+    },
+    "detail": {
+      "title": "샷 상세",
+      "goal": "목표",
+      "action": "액션",
+      "dialogue": "대사",
+      "shotType": "샷 유형",
+      "cameraMove": "카메라 무빙",
+      "duration": "길이",
+      "durationUnit": "초",
+      "imagePrompt": "이미지 프롬프트",
+      "videoPrompt": "비디오 프롬프트",
+      "lockedTokens": "잠긴 토큰",
+      "qaIssues": "품질 검사 문제",
+      "noImage": "이미지 없음",
+      "fixAndRegenerate": "제안에 따라 수정 후 재생성",
+      "regenerate": "재생성",
+      "lock": "잠금",
+      "unlock": "잠금 해제",
+      "saveHint": "Ctrl+Enter 저장",
+      "close": "닫기"
+    },
+    "batch": {
+      "selected": "{{count}}개 선택됨",
+      "regenerate": "일괄 재생성",
+      "lock": "일괄 잠금",
+      "unlock": "일괄 잠금 해제",
+      "clear": "선택 초기화"
+    },
+    "filter": {
+      "all": "전체",
+      "pending": "생성 대기",
+      "hasIssue": "문제 있음",
+      "locked": "잠금됨"
+    },
+    "timeline": {
+      "title": "타임라인",
+      "secondUnit": "초",
+      "noShots": "샷 없음"
+    },
+    "asset": {
+      "title": "에셋 라이브러리",
+      "characters": "캐릭터",
+      "scenes": "씬",
+      "props": "소품",
+      "newCharacter": "새 캐릭터",
+      "name": "이름",
+      "appearance": "외모",
+      "lockedTokens": "잠긴 토큰",
+      "applyToSelected": "선택한 샷에 적용",
+      "noAssets": "에셋 없음",
+      "create": "생성",
+      "cancel": "취소"
+    },
+    "snapshot": {
+      "create": "스냅샷 저장",
+      "restore": "복원",
+      "created": "스냅샷이 저장되었습니다",
+      "noSnapshots": "스냅샷 없음"
+    },
+    "card": {
+      "insertBefore": "앞에 삽입",
+      "duplicate": "복제",
+      "delete": "삭제"
+    },
+    "history": {
+      "title": "이미지 기록",
+      "restore": "복원"
+    }
+  }
+}

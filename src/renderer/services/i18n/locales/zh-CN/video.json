@@ -1,0 +1,91 @@
+{
+  "storyboard": {
+    "title": "分镜画板",
+    "loading": "加载分镜中...",
+    "empty": "暂无镜头",
+    "loadFailed": "分镜加载失败",
+    "shotLoadFailed": "镜头 {{id}} 加载失败",
+    "shot": "镜头",
+    "size": {
+      "small": "小",
+      "medium": "中",
+      "large": "大"
+    },
+    "status": {
+      "pending": "待处理",
+      "promptsReady": "提示词就绪",
+      "imageGenerated": "图片已生成",
+      "imageApproved": "图片已通过",
+      "videoGenerated": "视频已生成",
+      "approved": "已通过"
+    },
+    "detail": {
+      "title": "镜头详情",
+      "goal": "目标",
+      "action": "动作",
+      "dialogue": "对白",
+      "shotType": "景别",
+      "cameraMove": "运镜",
+      "duration": "时长",
+      "durationUnit": "秒",
+      "imagePrompt": "图片提示词",
+      "videoPrompt": "视频提示词",
+      "lockedTokens": "锁定 Token",
+      "qaIssues": "质检问题",
+      "noImage": "暂无图片",
+      "fixAndRegenerate": "按建议修复并重生成",
+      "regenerate": "重新生成",
+      "lock": "锁定",
+      "unlock": "解锁",
+      "saveHint": "Ctrl+Enter 保存",
+      "close": "关闭"
+    },
+    "batch": {
+      "selected": "已选 {{count}} 个",
+      "regenerate": "批量重生成",
+      "lock": "批量锁定",
+      "unlock": "批量解锁",
+      "clear": "清除选择"
+    },
+    "filter": {
+      "all": "全部",
+      "pending": "待生成",
+      "hasIssue": "有问题",
+      "locked": "已锁定"
+    },
+    "timeline": {
+      "title": "时间轴",
+      "secondUnit": "秒",
+      "noShots": "暂无镜头"
+    },
+    "asset": {
+      "title": "素材库",
+      "characters": "角色",
+      "scenes": "场景",
+      "props": "道具",
+      "newCharacter": "新建角色",
+      "name": "名称",
+      "appearance": "外貌",
+      "lockedTokens": "锁定 Token",
+      "applyToSelected": "应用到所选镜头",
+      "noAssets": "暂无素材",
+      "create": "创建",
+      "cancel": "取消"
+    },
+    "snapshot": {
+      "create": "保存快照",
+      "restore": "恢复",
+      "created": "快照已保存",
+      "noSnapshots": "暂无快照"
+    },
+    "card": {
+      "insertBefore": "在前插入",
+      "duplicate": "复制",
+      "delete": "删除"
+    },
+    "history": {
+      "title": "图片历史",
+      "restore": "恢复"
+    }
+  }
+}

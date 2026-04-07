@@ -1,0 +1,107 @@
+{
+  "schemaVersion": "1.0.0",
+  "phases": {
+    "director": {
+      "input": {
+        "required": ["scriptContent"],
+        "properties": {
+          "scriptContent": { "type": "string", "description": "Full script text" }
+        }
+      },
+      "output": {
+        "required": ["style", "scenes"],
+        "properties": {
+          "style": {
+            "required": ["genre", "visualStyle", "colorPalette", "cameraPreferences"],
+            "properties": {
+              "genre": { "type": "string" },
+              "visualStyle": { "type": "string" },
+              "colorPalette": { "type": "string" },
+              "cameraPreferences": { "type": "array", "items": { "type": "string" } }
+            }
+          },
+          "narrativeStructure": { "type": "string" },
+          "keyThemes": { "type": "array", "items": { "type": "string" } },
+          "scenes": {
+            "type": "array",
+            "items": {
+              "required": ["id", "name", "description"],
+              "properties": {
+                "id": { "type": "string" },
+                "name": { "type": "string" },
+                "description": { "type": "string" },
+                "timeOfDay": { "type": "string" },
+                "location": { "type": "string" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "storyboard_decompose": {
+      "input": {
+        "required": ["scriptContent", "style", "scenes"]
+      },
+      "output": {
+        "type": "array",
+        "items": {
+          "required": ["id", "sceneIndex", "shotIndex", "goal", "shotType", "cameraMove", "duration"],
+          "properties": {
+            "id": { "type": "string", "pattern": "^shot-\\d{3}$" },
+            "sceneIndex": { "type": "integer" },
+            "shotIndex": { "type": "integer" },
+            "goal": { "type": "string", "minLength": 1 },
+            "shotType": { "type": "string", "enum": ["EWS", "WS", "MS", "CU", "ECU"] },
+            "cameraMove": { "type": "string", "enum": ["static", "push", "pull", "pan", "tilt", "handheld"] },
+            "duration": { "type": "number", "minimum": 1, "maximum": 30 }
+          }
+        }
+      }
+    },
+    "prompt_pack": {
+      "input": {
+        "required": ["shots", "memorySummary"]
+      },
+      "output": {
+        "type": "array",
+        "items": {
+          "required": ["id", "imagePrompt", "videoPrompt", "lockedTokens"],
+          "properties": {
+            "id": { "type": "string" },
+            "imagePrompt": { "type": "string", "minLength": 10 },
+            "videoPrompt": { "type": "string", "minLength": 5 },
+            "lockedTokens": { "type": "array", "items": { "type": "string" } }
+          }
+        }
+      }
+    },
+    "image_qa": {
+      "input": {
+        "required": ["shots"]
+      },
+      "output": {
+        "type": "array",
+        "items": {
+          "required": ["shotId", "passed"],
+          "properties": {
+            "shotId": { "type": "string" },
+            "passed": { "type": "boolean" },
+            "qaIssues": {
+              "type": "array",
+              "items": {
+                "required": ["type", "description", "severity", "suggestion"],
+                "properties": {
+                  "type": {
+                    "type": "string",
+                    "enum": ["character-drift", "prop-missing", "style-shift", "composition", "continuity"]
+                  },
+                  "severity": { "type": "string", "enum": ["warning", "error"] }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}

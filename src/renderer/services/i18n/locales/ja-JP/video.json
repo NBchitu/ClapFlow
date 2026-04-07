@@ -1,0 +1,91 @@
+{
+  "storyboard": {
+    "title": "絵コンテボード",
+    "loading": "絵コンテを読み込み中...",
+    "empty": "まだショットがありません",
+    "loadFailed": "絵コンテの読み込みに失敗しました",
+    "shotLoadFailed": "ショット {{id}} の読み込みに失敗しました",
+    "shot": "ショット",
+    "size": {
+      "small": "小",
+      "medium": "中",
+      "large": "大"
+    },
+    "status": {
+      "pending": "保留中",
+      "promptsReady": "プロンプト準備完了",
+      "imageGenerated": "画像生成済み",
+      "imageApproved": "画像承認済み",
+      "videoGenerated": "動画生成済み",
+      "approved": "承認済み"
+    },
+    "detail": {
+      "title": "ショット詳細",
+      "goal": "目標",
+      "action": "アクション",
+      "dialogue": "台詞",
+      "shotType": "ショットタイプ",
+      "cameraMove": "カメラワーク",
+      "duration": "時間",
+      "durationUnit": "秒",
+      "imagePrompt": "画像プロンプト",
+      "videoPrompt": "動画プロンプト",
+      "lockedTokens": "ロック済みトークン",
+      "qaIssues": "品質チェックの問題",
+      "noImage": "画像なし",
+      "fixAndRegenerate": "提案に従って修正して再生成",
+      "regenerate": "再生成",
+      "lock": "ロック",
+      "unlock": "ロック解除",
+      "saveHint": "Ctrl+Enter で保存",
+      "close": "閉じる"
+    },
+    "batch": {
+      "selected": "{{count}} 件選択中",
+      "regenerate": "一括再生成",
+      "lock": "一括ロック",
+      "unlock": "一括ロック解除",
+      "clear": "選択をクリア"
+    },
+    "filter": {
+      "all": "すべて",
+      "pending": "生成待ち",
+      "hasIssue": "問題あり",
+      "locked": "ロック済み"
+    },
+    "timeline": {
+      "title": "タイムライン",
+      "secondUnit": "秒",
+      "noShots": "ショットなし"
+    },
+    "asset": {
+      "title": "アセットライブラリ",
+      "characters": "キャラクター",
+      "scenes": "シーン",
+      "props": "小道具",
+      "newCharacter": "新規キャラクター",
+      "name": "名前",
+      "appearance": "外見",
+      "lockedTokens": "ロック済みトークン",
+      "applyToSelected": "選択したショットに適用",
+      "noAssets": "アセットなし",
+      "create": "作成",
+      "cancel": "キャンセル"
+    },
+    "snapshot": {
+      "create": "スナップショットを保存",
+      "restore": "復元",
+      "created": "スナップショットを保存しました",
+      "noSnapshots": "スナップショットなし"
+    },
+    "card": {
+      "insertBefore": "前に挿入",
+      "duplicate": "複製",
+      "delete": "削除"
+    },
+    "history": {
+      "title": "画像履歴",
+      "restore": "復元"
+    }
+  }
+}

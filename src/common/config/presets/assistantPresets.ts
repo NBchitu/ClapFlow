@@ -633,6 +633,38 @@ export const ASSISTANT_PRESETS: AssistantPreset[] = [
     },
   },
   {
+    id: 'video-creator',
+    avatar: '🎬',
+    presetAgentType: 'gemini',
+    resourceDir: 'src/process/resources/assistant/video-creator',
+    ruleFiles: {
+      'en-US': 'video-creator.md',
+      'zh-CN': 'video-creator.zh-CN.md',
+    },
+    defaultEnabledSkills: ['video-creation-suite'],
+    nameI18n: {
+      'en-US': 'Video Creator',
+      'zh-CN': 'AI 视频创作助手',
+    },
+    descriptionI18n: {
+      'en-US':
+        'Transform scripts into AI-generated storyboards and videos. Covers visual style, shot breakdown, continuity, prompts, image generation, QA, and final video output.',
+      'zh-CN': '将剧本转化为 AI 生成的分镜故事板和视频。覆盖视觉风格、分镜拆解、连贯性检查、提示词、图像生成、质检和最终视频输出。',
+    },
+    promptsI18n: {
+      'en-US': [
+        'Create a video project: A hero walks into a café, sits down and orders coffee, rain starts outside the window',
+        'Make a short film storyboard: A scientist discovers an ancient map in the lab and rushes out into the night',
+        'Generate a product commercial storyboard for a minimalist smart watch launch',
+      ],
+      'zh-CN': [
+        '帮我创建视频项目，剧本：主角走进咖啡馆，坐下点了一杯咖啡，窗外开始下雨',
+        '制作短片分镜，剧本：科学家在实验室发现一张古老地图，匆忙冲入夜色中',
+        '为极简风格智能手表发布会生成产品广告分镜',
+      ],
+    },
+  },
+  {
     id: 'story-roleplay',
     avatar: '📖',
     presetAgentType: 'gemini',

@@ -24,6 +24,7 @@ import OfficeDocPreview from '../viewers/OfficeDocViewer';
 import PptViewer from '../viewers/PptViewer';
 import TextEditor from '../editors/TextEditor';
 import URLViewer from '../viewers/URLViewer';
+import StoryboardBoardViewer from '../viewers/StoryboardBoardViewer';
 import {
   PreviewTabs,
   PreviewToolbar,
@@ -650,6 +651,9 @@ const PreviewPanel: React.FC = () => {
     } else if (contentType === 'url') {
       // URL 预览模式 / URL preview mode
       return <URLViewer url={content} title={metadata?.title} />;
+    } else if (contentType === 'storyboard') {
+      // 分镜画板预览 / Storyboard board viewer
+      return <StoryboardBoardViewer content={content} filePath={metadata?.filePath} />;
     }
 
     return null;

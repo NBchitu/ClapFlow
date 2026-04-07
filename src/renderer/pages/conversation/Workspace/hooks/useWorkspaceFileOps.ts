@@ -318,8 +318,11 @@ export function useWorkspaceFileOps(options: UseWorkspaceFileOpsOptions) {
         let content = '';
         let isLargeTextTruncated = false;
 
-        // 根据扩展名判断文件类型 / Determine file type based on extension
-        if (ext === 'md' || ext === 'markdown') {
+        // 特殊文件名检查：storyboard.json → 分镜画板预览
+        // Special filename check: storyboard.json → storyboard viewer
+        if (nodeData.name === 'storyboard.json') {
+          contentType = 'storyboard';
+        } else if (ext === 'md' || ext === 'markdown') {
           contentType = 'markdown';
         } else if (ext === 'diff' || ext === 'patch') {
           contentType = 'diff';
@@ -413,7 +416,13 @@ export function useWorkspaceFileOps(options: UseWorkspaceFileOpsOptions) {
           language: ext,
           // Markdown 和图片文件默认为只读模式
           // Markdown and image files default to read-only mode
-          editable: contentType === 'markdown' || contentType === 'image' || isLargeTextTruncated ? false : undefined,
+          editable:
+            contentType === 'markdown' ||
+            contentType === 'image' ||
+            contentType === 'storyboard' ||
+            isLargeTextTruncated
+              ? false
+              : undefined,
         });
       } catch (error) {
         messageApi.error(t('conversation.workspace.contextMenu.previewFailed'));

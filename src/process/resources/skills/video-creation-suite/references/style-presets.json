@@ -1,0 +1,68 @@
+[
+  {
+    "id": "preset-cyberpunk",
+    "name": "赛博朋克",
+    "description": "霓虹灯、潮湿街道、高科技低生活",
+    "style": {
+      "genre": "cyberpunk drama",
+      "visualStyle": "high contrast, desaturated midtones with neon color pops",
+      "colorPalette": "teal and magenta, neon blues and purples",
+      "cameraPreferences": ["MS", "CU", "handheld"]
+    },
+    "promptTokens": ["cyberpunk style", "neon lights", "rain-soaked street", "high contrast", "cinematic"]
+  },
+  {
+    "id": "preset-ancient-china",
+    "name": "古风国漫",
+    "description": "中国古代风格，国漫画风",
+    "style": {
+      "genre": "ancient Chinese drama",
+      "visualStyle": "ink painting aesthetics, flowing robes, traditional architecture",
+      "colorPalette": "jade green, vermilion, gold, ink black",
+      "cameraPreferences": ["WS", "MS", "static", "pan"]
+    },
+    "promptTokens": ["ancient Chinese style", "ink wash painting", "traditional costume", "hanfu", "dramatic lighting"]
+  },
+  {
+    "id": "preset-modern-ad",
+    "name": "现代广告",
+    "description": "简洁现代，商业广告质感",
+    "style": {
+      "genre": "commercial advertisement",
+      "visualStyle": "clean, minimalist, high-key lighting",
+      "colorPalette": "white, light grey, brand accent color",
+      "cameraPreferences": ["MS", "CU", "push", "static"]
+    },
+    "promptTokens": [
+      "commercial photography",
+      "clean background",
+      "professional lighting",
+      "sharp focus",
+      "8k product shot"
+    ]
+  },
+  {
+    "id": "preset-noir",
+    "name": "黑色电影",
+    "description": "黑白或低饱和，强烈明暗对比",
+    "style": {
+      "genre": "film noir",
+      "visualStyle": "hard shadows, venetian blinds light patterns, deep blacks",
+      "colorPalette": "monochrome or desaturated with single warm accent",
+      "cameraPreferences": ["CU", "static", "tilt"]
+    },
+    "promptTokens": ["film noir", "hard chiaroscuro lighting", "deep shadows", "vintage aesthetic", "cinematic grain"]
+  },
+  {
+    "id": "preset-anime",
+    "name": "动漫风格",
+    "description": "日系动漫画风",
+    "style": {
+      "genre": "anime",
+      "visualStyle": "anime art style, cel shading, expressive characters",
+      "colorPalette": "vivid saturated colors, clean lines",
+      "cameraPreferences": ["MS", "CU", "push"]
+    },
+    "promptTokens": ["anime style", "cel shading", "2d illustration", "vibrant colors", "manga influence"]
+  }
+]

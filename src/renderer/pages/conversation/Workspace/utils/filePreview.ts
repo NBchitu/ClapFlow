@@ -73,3 +73,10 @@ export function isPreviewSupportedExt(filename: string): boolean {
   const ext = filename.toLowerCase().split('.').pop() || '';
   return PREVIEW_SUPPORTED_EXTENSIONS.has(ext);
 }
+
+/**
+ * Check whether a file is a video project storyboard
+ */
+export function isStoryboardFile(filename: string): boolean {
+  return filename === 'storyboard.json';
+}

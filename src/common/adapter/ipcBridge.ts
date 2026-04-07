@@ -1278,3 +1278,57 @@ export const team = {
   agentRemoved: bridge.buildEmitter<import('@/common/types/teamTypes').ITeamAgentRemovedEvent>('team.agent.removed'),
   agentRenamed: bridge.buildEmitter<import('@/common/types/teamTypes').ITeamAgentRenamedEvent>('team.agent.renamed'),
 };
+
+// ==================== Video Creation API ====================
+import type {
+  ParseScriptParams,
+  ParseScriptResult,
+  RunHarnessPhaseParams,
+  PhaseResult,
+  UpdateShotParams,
+  Shot,
+  GenerateImagesParams,
+  GenerateImagesResult,
+  GenerateVideoParams,
+  GenerateVideoResult,
+  StoryboardStreamEvent,
+  ProjectMemory,
+  CharacterAsset,
+  SceneAsset,
+  GetAssetsResult,
+  CreateAssetParams,
+  UpdateAssetParams,
+  DeleteAssetParams,
+  SnapshotInfo,
+  ListSnapshotsParams,
+  CreateSnapshotParams,
+  RestoreSnapshotParams,
+} from '@/common/types/videoCreation';
+
+export const videoCreation = {
+  parseScript: bridge.buildProvider<ParseScriptResult, ParseScriptParams>('video.parseScript'),
+  runHarnessPhase: bridge.buildProvider<PhaseResult, RunHarnessPhaseParams>('video.runHarnessPhase'),
+  updateShot: bridge.buildProvider<Shot, UpdateShotParams>('video.updateShot'),
+  generateShotImages: bridge.buildProvider<GenerateImagesResult, GenerateImagesParams>('video.generateShotImages'),
+  generateFinalVideo: bridge.buildProvider<GenerateVideoResult, GenerateVideoParams>('video.generateFinalVideo'),
+  storyboardStream: bridge.buildEmitter<StoryboardStreamEvent>('video.storyboardStream'),
+  getProjectMemory: bridge.buildProvider<ProjectMemory, { projectRoot: string }>('video.getProjectMemory'),
+  // Asset CRUD
+  getAssets: bridge.buildProvider<GetAssetsResult, { projectRoot: string }>('video.getAssets'),
+  createAsset: bridge.buildProvider<CharacterAsset | SceneAsset, CreateAssetParams>('video.createAsset'),
+  updateAsset: bridge.buildProvider<void, UpdateAssetParams>('video.updateAsset'),
+  deleteAsset: bridge.buildProvider<void, DeleteAssetParams>('video.deleteAsset'),
+  applyAssetToShots: bridge.buildProvider<void, { projectRoot: string; charId: string; shotIds: string[] }>(
+    'video.applyAssetToShots'
+  ),
+  // Snapshot
+  listSnapshots: bridge.buildProvider<SnapshotInfo[], ListSnapshotsParams>('video.listSnapshots'),
+  createSnapshot: bridge.buildProvider<SnapshotInfo, CreateSnapshotParams>('video.createSnapshot'),
+  restoreSnapshot: bridge.buildProvider<void, RestoreSnapshotParams>('video.restoreSnapshot'),
+  // Shot CRUD
+  insertShot: bridge.buildProvider<Shot, { projectRoot: string; after: string | null; partial: Partial<Shot> }>(
+    'video.insertShot'
+  ),
+  deleteShot: bridge.buildProvider<void, { projectRoot: string; shotId: string }>('video.deleteShot'),
+  reorderShots: bridge.buildProvider<void, { projectRoot: string; orderedIds: string[] }>('video.reorderShots'),
+};

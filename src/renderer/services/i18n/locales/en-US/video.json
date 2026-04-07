@@ -1,0 +1,91 @@
+{
+  "storyboard": {
+    "title": "Storyboard",
+    "loading": "Loading storyboard...",
+    "empty": "No shots yet",
+    "loadFailed": "Failed to load storyboard",
+    "shotLoadFailed": "Failed to load shot {{id}}",
+    "shot": "Shot",
+    "size": {
+      "small": "S",
+      "medium": "M",
+      "large": "L"
+    },
+    "status": {
+      "pending": "Pending",
+      "promptsReady": "Prompts Ready",
+      "imageGenerated": "Image Generated",
+      "imageApproved": "Image Approved",
+      "videoGenerated": "Video Generated",
+      "approved": "Approved"
+    },
+    "detail": {
+      "title": "Shot Details",
+      "goal": "Goal",
+      "action": "Action",
+      "dialogue": "Dialogue",
+      "shotType": "Shot Type",
+      "cameraMove": "Camera Move",
+      "duration": "Duration",
+      "durationUnit": "sec",
+      "imagePrompt": "Image Prompt",
+      "videoPrompt": "Video Prompt",
+      "lockedTokens": "Locked Tokens",
+      "qaIssues": "QA Issues",
+      "noImage": "No image yet",
+      "fixAndRegenerate": "Fix & Regenerate",
+      "regenerate": "Regenerate",
+      "lock": "Lock",
+      "unlock": "Unlock",
+      "saveHint": "Ctrl+Enter to save",
+      "close": "Close"
+    },
+    "batch": {
+      "selected": "{{count}} selected",
+      "regenerate": "Regenerate",
+      "lock": "Lock",
+      "unlock": "Unlock",
+      "clear": "Clear"
+    },
+    "filter": {
+      "all": "All",
+      "pending": "Pending",
+      "hasIssue": "Has Issues",
+      "locked": "Locked"
+    },
+    "timeline": {
+      "title": "Timeline",
+      "secondUnit": "s",
+      "noShots": "No shots"
+    },
+    "asset": {
+      "title": "Asset Library",
+      "characters": "Characters",
+      "scenes": "Scenes",
+      "props": "Props",
+      "newCharacter": "New Character",
+      "name": "Name",
+      "appearance": "Appearance",
+      "lockedTokens": "Locked Tokens",
+      "applyToSelected": "Apply to Selected",
+      "noAssets": "No assets yet",
+      "create": "Create",
+      "cancel": "Cancel"
+    },
+    "snapshot": {
+      "create": "Save Snapshot",
+      "restore": "Restore",
+      "created": "Snapshot saved",
+      "noSnapshots": "No snapshots"
+    },
+    "card": {
+      "insertBefore": "Insert before",
+      "duplicate": "Duplicate",
+      "delete": "Delete"
+    },
+    "history": {
+      "title": "Image History",
+      "restore": "Restore"
+    }
+  }
+}

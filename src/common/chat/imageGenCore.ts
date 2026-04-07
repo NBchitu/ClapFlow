@@ -99,6 +99,18 @@ export async function saveGeneratedImage(base64Data: string, workspaceDir: strin
   }
 }
 
+export async function downloadAndSaveImage(url: string, workspaceDir: string): Promise<string> {
+  const axios = (await import('axios')).default;
+  const timestamp = Date.now();
+  const urlExt = path.extname(new URL(url).pathname).toLowerCase() || DEFAULT_IMAGE_EXTENSION;
+  const fileName = `img-${timestamp}${urlExt}`;
+  const filePath = path.join(workspaceDir, fileName);
+
+  const resp = await axios.get<ArrayBuffer>(url, { responseType: 'arraybuffer', timeout: 60_000 });
+  await fs.promises.writeFile(filePath, Buffer.from(resp.data));
+  return filePath;
+}
+
 // ===== Image Content Processing =====
 
 interface ImageContent {
@@ -271,15 +283,26 @@ export async function executeImageGeneration(
           const processedImages: Array<{ type: 'image_url'; image_url: { url: string } }> = [];
           for (const match of filePathMatches) {
             const filePath = match[1];
-            const fullPath = path.isAbsolute(filePath) ? filePath : path.join(workspaceDir, filePath);
             try {
-              await fs.promises.access(fullPath);
-              const base64Data = await fileToBase64(fullPath);
-              const mimeType = getImageMimeType(fullPath);
-              processedImages.push({
-                type: 'image_url',
-                image_url: { url: `data:${mimeType};base64,${base64Data}` },
-              });
+              if (isHttpUrl(filePath)) {
+                // Download the remote image and save it locally
+                const savedPath = await downloadAndSaveImage(filePath, workspaceDir);
+                const base64Data = await fileToBase64(savedPath);
+                const mimeType = getImageMimeType(savedPath);
+                processedImages.push({
+                  type: 'image_url',
+                  image_url: { url: `data:${mimeType};base64,${base64Data}` },
+                });
+              } else {
+                const fullPath = path.isAbsolute(filePath) ? filePath : path.join(workspaceDir, filePath);
+                await fs.promises.access(fullPath);
+                const base64Data = await fileToBase64(fullPath);
+                const mimeType = getImageMimeType(fullPath);
+                processedImages.push({
+                  type: 'image_url',
+                  image_url: { url: `data:${mimeType};base64,${base64Data}` },
+                });
+              }
             } catch (_fileError) {
               console.warn(`[ImageGen] Could not load image file: ${filePath}`);
             }
@@ -298,7 +321,10 @@ export async function executeImageGeneration(
 
     const firstImage = images[0];
     if (firstImage.type === 'image_url' && firstImage.image_url?.url) {
-      const imagePath = await saveGeneratedImage(firstImage.image_url.url, workspaceDir);
+      const imageUrl = firstImage.image_url.url;
+      const imagePath = isHttpUrl(imageUrl)
+        ? await downloadAndSaveImage(imageUrl, workspaceDir)
+        : await saveGeneratedImage(imageUrl, workspaceDir);
       const relativeImagePath = path.relative(workspaceDir, imagePath);
 
       return {

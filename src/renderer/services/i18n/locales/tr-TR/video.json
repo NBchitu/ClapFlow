@@ -1,0 +1,91 @@
+{
+  "storyboard": {
+    "title": "Storyboard",
+    "loading": "Storyboard yükleniyor...",
+    "empty": "Henüz çekim yok",
+    "loadFailed": "Storyboard yüklenemedi",
+    "shotLoadFailed": "{{id}} çekimi yüklenemedi",
+    "shot": "Çekim",
+    "size": {
+      "small": "K",
+      "medium": "O",
+      "large": "B"
+    },
+    "status": {
+      "pending": "Bekliyor",
+      "promptsReady": "Promptlar Hazır",
+      "imageGenerated": "Görsel Oluşturuldu",
+      "imageApproved": "Görsel Onaylandı",
+      "videoGenerated": "Video Oluşturuldu",
+      "approved": "Onaylandı"
+    },
+    "detail": {
+      "title": "Çekim Detayı",
+      "goal": "Hedef",
+      "action": "Eylem",
+      "dialogue": "Diyalog",
+      "shotType": "Çekim Türü",
+      "cameraMove": "Kamera Hareketi",
+      "duration": "Süre",
+      "durationUnit": "sn",
+      "imagePrompt": "Görsel Promptu",
+      "videoPrompt": "Video Promptu",
+      "lockedTokens": "Kilitli Token",
+      "qaIssues": "Kalite Kontrol Sorunları",
+      "noImage": "Görsel yok",
+      "fixAndRegenerate": "Öneriye göre düzelt ve yeniden oluştur",
+      "regenerate": "Yeniden Oluştur",
+      "lock": "Kilitle",
+      "unlock": "Kilidi Aç",
+      "saveHint": "Ctrl+Enter ile kaydet",
+      "close": "Kapat"
+    },
+    "batch": {
+      "selected": "{{count}} öğe seçildi",
+      "regenerate": "Toplu Yeniden Oluştur",
+      "lock": "Toplu Kilitle",
+      "unlock": "Toplu Kilidi Aç",
+      "clear": "Seçimi Temizle"
+    },
+    "filter": {
+      "all": "Tümü",
+      "pending": "Oluşturulacak",
+      "hasIssue": "Sorunlu",
+      "locked": "Kilitli"
+    },
+    "timeline": {
+      "title": "Zaman Çizelgesi",
+      "secondUnit": "sn",
+      "noShots": "Çekim yok"
+    },
+    "asset": {
+      "title": "Varlık Kütüphanesi",
+      "characters": "Karakterler",
+      "scenes": "Sahneler",
+      "props": "Sahne Malzemeleri",
+      "newCharacter": "Yeni Karakter",
+      "name": "Ad",
+      "appearance": "Görünüm",
+      "lockedTokens": "Kilitli Token",
+      "applyToSelected": "Seçili Çekimlere Uygula",
+      "noAssets": "Henüz varlık yok",
+      "create": "Oluştur",
+      "cancel": "İptal"
+    },
+    "snapshot": {
+      "create": "Anlık Görüntü Kaydet",
+      "restore": "Geri Yükle",
+      "created": "Anlık görüntü kaydedildi",
+      "noSnapshots": "Anlık görüntü yok"
+    },
+    "card": {
+      "insertBefore": "Önüne ekle",
+      "duplicate": "Çoğalt",
+      "delete": "Sil"
+    },
+    "history": {
+      "title": "Görsel Geçmişi",
+      "restore": "Geri Yükle"
+    }
+  }
+}

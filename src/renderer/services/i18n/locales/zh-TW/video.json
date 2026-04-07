@@ -1,0 +1,91 @@
+{
+  "storyboard": {
+    "title": "分鏡畫板",
+    "loading": "載入分鏡中...",
+    "empty": "尚無鏡頭",
+    "loadFailed": "分鏡載入失敗",
+    "shotLoadFailed": "鏡頭 {{id}} 載入失敗",
+    "shot": "鏡頭",
+    "size": {
+      "small": "小",
+      "medium": "中",
+      "large": "大"
+    },
+    "status": {
+      "pending": "待處理",
+      "promptsReady": "提示詞就緒",
+      "imageGenerated": "圖片已生成",
+      "imageApproved": "圖片已通過",
+      "videoGenerated": "影片已生成",
+      "approved": "已通過"
+    },
+    "detail": {
+      "title": "鏡頭詳情",
+      "goal": "目標",
+      "action": "動作",
+      "dialogue": "對白",
+      "shotType": "景別",
+      "cameraMove": "運鏡",
+      "duration": "時長",
+      "durationUnit": "秒",
+      "imagePrompt": "圖片提示詞",
+      "videoPrompt": "影片提示詞",
+      "lockedTokens": "鎖定 Token",
+      "qaIssues": "品質檢查問題",
+      "noImage": "暫無圖片",
+      "fixAndRegenerate": "依建議修復並重新生成",
+      "regenerate": "重新生成",
+      "lock": "鎖定",
+      "unlock": "解鎖",
+      "saveHint": "Ctrl+Enter 儲存",
+      "close": "關閉"
+    },
+    "batch": {
+      "selected": "已選 {{count}} 個",
+      "regenerate": "批量重新生成",
+      "lock": "批量鎖定",
+      "unlock": "批量解鎖",
+      "clear": "清除選擇"
+    },
+    "filter": {
+      "all": "全部",
+      "pending": "待生成",
+      "hasIssue": "有問題",
+      "locked": "已鎖定"
+    },
+    "timeline": {
+      "title": "時間軸",
+      "secondUnit": "秒",
+      "noShots": "尚無鏡頭"
+    },
+    "asset": {
+      "title": "素材庫",
+      "characters": "角色",
+      "scenes": "場景",
+      "props": "道具",
+      "newCharacter": "新增角色",
+      "name": "名稱",
+      "appearance": "外觀",
+      "lockedTokens": "鎖定 Token",
+      "applyToSelected": "套用至所選鏡頭",
+      "noAssets": "尚無素材",
+      "create": "建立",
+      "cancel": "取消"
+    },
+    "snapshot": {
+      "create": "儲存快照",
+      "restore": "還原",
+      "created": "快照已儲存",
+      "noSnapshots": "尚無快照"
+    },
+    "card": {
+      "insertBefore": "在前插入",
+      "duplicate": "複製",
+      "delete": "刪除"
+    },
+    "history": {
+      "title": "圖片歷史",
+      "restore": "還原"
+    }
+  }
+}
