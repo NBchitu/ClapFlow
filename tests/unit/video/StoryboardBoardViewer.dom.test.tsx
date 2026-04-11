@@ -217,6 +217,25 @@ vi.mock('@arco-design/web-react', () => ({
     }),
 }));
 
+vi.mock('@xyflow/react', () => ({
+  ReactFlow: ({ children }: { children?: React.ReactNode }) =>
+    React.createElement('div', { 'data-testid': 'react-flow' }, children),
+  Background: () => React.createElement('div', { 'data-testid': 'react-flow-bg' }),
+  MiniMap: () => React.createElement('div', { 'data-testid': 'react-flow-minimap' }),
+  Panel: ({ children }: { children?: React.ReactNode }) => React.createElement('div', null, children),
+  Handle: () => React.createElement('div'),
+  BaseEdge: () => React.createElement('path'),
+  getSmoothStepPath: () => ['M0 0 C 0 0 0 0 0 0'],
+  useReactFlow: () => ({
+    fitView: vi.fn(),
+    zoomIn: vi.fn(),
+    zoomOut: vi.fn(),
+  }),
+  useViewport: () => ({ zoom: 1 }),
+  Position: { Left: 'left', Right: 'right' },
+  BackgroundVariant: { Dots: 'dots' },
+}));
+
 // Static imports after mocks
 import StoryboardBoardViewer from '@renderer/pages/conversation/Preview/components/viewers/StoryboardBoardViewer/StoryboardBoardViewer';
 import ShotCard from '@renderer/pages/conversation/Preview/components/viewers/StoryboardBoardViewer/ShotCard';
@@ -229,7 +248,9 @@ function makeShot(id: string, overrides?: Partial<Shot>): Shot {
   const idx = parseInt(id.replace('shot-', ''), 10) || 1;
   return {
     id,
+    sceneId: 'scene-01',
     sceneIndex: 0,
+    sceneShotIndex: idx,
     shotIndex: idx,
     goal: `Goal for ${id}`,
     sceneDescription: 'Scene',
@@ -257,7 +278,14 @@ function makeStoryboard(shotIds: string[]): Storyboard {
     projectRoot: '/tmp/test-project',
     scriptPath: '/tmp/test-project/00-script/script.md',
     style: undefined,
-    scenes: [],
+    scenes: [
+      {
+        id: 'scene-01',
+        name: 'Scene 1',
+        description: 'Desc',
+        shotIds,
+      },
+    ],
     shotIds,
     createdAt: '2026-01-01T00:00:00Z',
     updatedAt: '2026-01-01T00:00:00Z',
@@ -354,6 +382,25 @@ describe('StoryboardBoardViewer', () => {
     unmount();
     expect(getStreamSubscribers().length).toBe(0);
   });
+
+  it('switches to flow view and renders React Flow canvas', async () => {
+    const sb = makeStoryboard(['shot-001']);
+    mockFsReadFile.mockResolvedValueOnce(JSON.stringify(makeShot('shot-001')));
+
+    render(
+      React.createElement(StoryboardBoardViewer, {
+        content: JSON.stringify(sb),
+        filePath: '/tmp/test/01-storyboard/storyboard.json',
+      })
+    );
+
+    await waitFor(() => expect(mockFsReadFile).toHaveBeenCalledTimes(1));
+    fireEvent.click(screen.getByText('◎'));
+
+    await waitFor(() => {
+      expect(screen.getByTestId('react-flow')).toBeInTheDocument();
+    });
+  });
 });
 
 describe('ShotCard', () => {
@@ -361,6 +408,7 @@ describe('ShotCard', () => {
     const statuses: Array<Shot['status']> = [
       'pending',
       'prompts-ready',
+      'image-generating',
       'image-generated',
       'image-approved',
       'video-generated',

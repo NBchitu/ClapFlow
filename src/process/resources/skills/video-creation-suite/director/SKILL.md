@@ -41,3 +41,4 @@ Return a valid JSON object with this structure:
 - `cameraPreferences` must use valid values: `EWS`, `WS`, `MS`, `CU`, `ECU`, `static`, `push`, `pull`, `pan`, `tilt`, `handheld`
 - `genre` should be specific (not just "drama")
 - `scenes` must cover all distinct locations/time periods in the script
+- `scenes[].id` should be sequential and stable: `scene-01`, `scene-02`, ...

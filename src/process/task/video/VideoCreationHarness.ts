@@ -238,27 +238,113 @@ export class VideoCreationHarness {
       `Scenes:\n${JSON.stringify(storyboard.scenes ?? [], null, 2)}`,
     ].join('\n\n---\n\n');
 
-    const rawShots = await callVideoAi<Partial<Shot>[]>(
+    type SceneStoryboardOutput = Pick<SceneInfo, 'id' | 'name' | 'description' | 'timeOfDay' | 'location'> & {
+      shots: Partial<Shot>[];
+    };
+    type StoryboardDecomposeOutput =
+      | Partial<Shot>[]
+      | {
+          scenes?: SceneStoryboardOutput[];
+          shots?: Partial<Shot>[];
+        };
+
+    const aiOutput = await callVideoAi<StoryboardDecomposeOutput>(
       model,
       skillContent ||
-        'You are a storyboard artist. Decompose the script into shots. Return a JSON array of shot objects.',
+        'You are a storyboard artist. Decompose the script into scenes and shots. Return JSON with scenes[].shots[] or a shot array.',
       userMsg,
       8192
     );
 
-    if (!Array.isArray(rawShots) || rawShots.length === 0) {
+    const sceneIndexById = new Map<string, number>();
+    const normalizedScenes: SceneInfo[] = (storyboard.scenes ?? []).map((scene, index) => {
+      const sceneId = scene.id || `scene-${String(index + 1).padStart(2, '0')}`;
+      sceneIndexById.set(sceneId, index);
+      return {
+        ...scene,
+        id: sceneId,
+        name: scene.name || `Scene ${index + 1}`,
+        description: scene.description || '',
+        shotIds: [] as string[],
+      };
+    });
+
+    const rawShots: Partial<Shot>[] = [];
+    if (Array.isArray(aiOutput)) {
+      rawShots.push(...aiOutput);
+    } else if (aiOutput?.scenes && Array.isArray(aiOutput.scenes)) {
+      for (const [scenePos, scene] of aiOutput.scenes.entries()) {
+        const sceneId = scene.id || normalizedScenes[scenePos]?.id || `scene-${String(scenePos + 1).padStart(2, '0')}`;
+        if (!sceneIndexById.has(sceneId)) {
+          const sceneIndex = normalizedScenes.length;
+          normalizedScenes.push({
+            id: sceneId,
+            name: scene.name || `Scene ${sceneIndex + 1}`,
+            description: scene.description || '',
+            timeOfDay: scene.timeOfDay,
+            location: scene.location,
+            shotIds: [] as string[],
+          });
+          sceneIndexById.set(sceneId, sceneIndex);
+        } else {
+          const idx = sceneIndexById.get(sceneId) as number;
+          normalizedScenes[idx] = {
+            ...normalizedScenes[idx],
+            name: scene.name || normalizedScenes[idx].name,
+            description: scene.description || normalizedScenes[idx].description,
+            timeOfDay: scene.timeOfDay ?? normalizedScenes[idx].timeOfDay,
+            location: scene.location ?? normalizedScenes[idx].location,
+          };
+        }
+
+        for (const shot of scene.shots ?? []) {
+          rawShots.push({
+            ...shot,
+            sceneId,
+            sceneIndex: sceneIndexById.get(sceneId) ?? scenePos,
+            sceneDescription: shot.sceneDescription ?? scene.description ?? '',
+          });
+        }
+      }
+    } else if (Array.isArray(aiOutput?.shots)) {
+      rawShots.push(...aiOutput.shots);
+    }
+
+    if (rawShots.length === 0) {
       throw new Error('storyboard_decompose: no shots generated');
     }
 
     await fs.mkdir(paths.shotsDir, { recursive: true });
 
     const writtenIds: string[] = [];
+    const sceneShotCounter = new Map<string, number>();
     for (let i = 0; i < rawShots.length; i++) {
       const raw = rawShots[i];
       const id = `shot-${String(i + 1).padStart(3, '0')}`;
+      const sceneId =
+        raw.sceneId ??
+        (typeof raw.sceneIndex === 'number' ? normalizedScenes[raw.sceneIndex]?.id : undefined) ??
+        normalizedScenes[0]?.id ??
+        'scene-01';
+      if (!sceneIndexById.has(sceneId)) {
+        const newSceneIndex = normalizedScenes.length;
+        normalizedScenes.push({
+          id: sceneId,
+          name: `Scene ${newSceneIndex + 1}`,
+          description: raw.sceneDescription ?? '',
+          shotIds: [],
+        });
+        sceneIndexById.set(sceneId, newSceneIndex);
+      }
+      const sceneIndex = sceneIndexById.get(sceneId) ?? 0;
+      const sceneShotIndex = (sceneShotCounter.get(sceneId) ?? 0) + 1;
+      sceneShotCounter.set(sceneId, sceneShotIndex);
+
       const shot: Shot = {
         id,
-        sceneIndex: raw.sceneIndex ?? 0,
+        sceneId,
+        sceneIndex,
+        sceneShotIndex,
         shotIndex: i + 1,
         goal: raw.goal ?? '',
         sceneDescription: raw.sceneDescription ?? '',
@@ -270,7 +356,7 @@ export class VideoCreationHarness {
         imagePrompt: '',
         videoPrompt: '',
         lockedTokens: [],
-        continuityRefs: {},
+        continuityRefs: { sharedScene: sceneId },
         assetRefs: [],
         duration: raw.duration ?? 4,
         status: 'pending',
@@ -278,10 +364,15 @@ export class VideoCreationHarness {
       };
       await this.storyboardService.writeShot(projectRoot, shot);
       writtenIds.push(id);
+      const scenePos = normalizedScenes.findIndex((scene) => scene.id === sceneId);
+      if (scenePos >= 0) {
+        const scene = normalizedScenes[scenePos];
+        normalizedScenes[scenePos] = { ...scene, shotIds: [...(scene.shotIds ?? []), id] };
+      }
       this.emitStream({ type: 'progress', completed: i + 1, total: rawShots.length, phase: 'storyboard_decompose' });
     }
 
-    await this.storyboardService.updateStoryboard(projectRoot, { shotIds: writtenIds });
+    await this.storyboardService.updateStoryboard(projectRoot, { shotIds: writtenIds, scenes: normalizedScenes });
     console.log(`[Harness] Storyboard decompose: ${writtenIds.length} shots`);
     return writtenIds;
   }
@@ -304,7 +395,13 @@ export class VideoCreationHarness {
       continuityRefs?: Shot['continuityRefs'];
       qaIssues?: Shot['qaIssues'];
     };
-    const updates = await callVideoAi<ContinuityUpdate[]>(
+    type ContinuityOutput =
+      | ContinuityUpdate[]
+      | {
+          updates?: ContinuityUpdate[];
+        }
+      | Array<Partial<Shot>>;
+    const output = await callVideoAi<ContinuityOutput>(
       model,
       skillContent ||
         'You are a continuity supervisor. Review shots for consistency. Return JSON array with shotId, continuityRefs, qaIssues.',
@@ -312,7 +409,31 @@ export class VideoCreationHarness {
       8192
     );
 
-    if (!Array.isArray(updates)) throw new Error('continuity_review: invalid response');
+    const updates: ContinuityUpdate[] = Array.isArray(output)
+      ? output
+          .map((item): ContinuityUpdate | null => {
+            if ('shotId' in item && typeof item.shotId === 'string') {
+              return {
+                shotId: item.shotId,
+                continuityRefs: item.continuityRefs,
+                qaIssues: item.qaIssues,
+              };
+            }
+            if ('id' in item && typeof item.id === 'string') {
+              return {
+                shotId: item.id,
+                continuityRefs: item.continuityRefs,
+                qaIssues: item.qaIssues,
+              };
+            }
+            return null;
+          })
+          .filter((item): item is ContinuityUpdate => item !== null)
+      : Array.isArray(output?.updates)
+        ? output.updates
+        : [];
+
+    if (updates.length === 0) throw new Error('continuity_review: invalid response');
 
     const updatedIds: string[] = [];
     for (const update of updates) {
@@ -390,7 +511,9 @@ export class VideoCreationHarness {
   // ─── Phase 5: Image Generate (T3.3) ──────────────────────────
 
   private async runImageGeneratePhase(projectRoot: string, shotIds: string[], allShots: Shot[]): Promise<string[]> {
-    const { executeImageGeneration } = await import('@/common/chat/imageGenCore');
+    const { executeImageGeneration, downloadAndSaveImage, saveGeneratedImage, isHttpUrl } = await import(
+      '@/common/chat/imageGenCore'
+    );
     const { ProcessConfig } = await import('@process/utils/initStorage');
 
     const imgModelRaw = await ProcessConfig.get('tools.imageGenerationModel');
@@ -415,6 +538,7 @@ export class VideoCreationHarness {
 
     const IMAGE_CONCURRENCY = 3;
     const succeeded: string[] = [];
+    const finished = new Set<string>();
 
     const imgProvider = {
       id: 'img-gen',
@@ -430,21 +554,54 @@ export class VideoCreationHarness {
       const batch = targets.slice(i, i + IMAGE_CONCURRENCY);
       await Promise.all(
         batch.map(async (shot) => {
+          const generatingShot: Shot = { ...shot, status: 'image-generating' };
+          await this.storyboardService.writeShot(projectRoot, generatingShot);
+          this.emitStream({ type: 'shot-updated', shotId: shot.id, shot: generatingShot });
+
           try {
-            const result = await executeImageGeneration({ prompt: shot.imagePrompt }, imgProvider, paths.imagesDir);
+            const result = await executeImageGeneration(
+              { prompt: generatingShot.imagePrompt },
+              imgProvider,
+              paths.imagesDir
+            );
             if (result.success && result.imagePath) {
-              const updated: Shot = { ...shot, imagePath: result.imagePath, status: 'image-generated' };
+              let generatedLocalPath = result.imagePath;
+              if (isHttpUrl(generatedLocalPath)) {
+                generatedLocalPath = await downloadAndSaveImage(generatedLocalPath, paths.imagesDir);
+              } else if (generatedLocalPath.startsWith('data:image/')) {
+                generatedLocalPath = await saveGeneratedImage(generatedLocalPath, paths.imagesDir);
+              } else if (!nodePath.isAbsolute(generatedLocalPath)) {
+                generatedLocalPath = nodePath.join(paths.imagesDir, generatedLocalPath);
+              }
+
+              await fs.access(generatedLocalPath);
+              const { imagePath, imageHistory } = await this.promoteShotImageWithVersioning(
+                generatingShot,
+                generatedLocalPath,
+                paths.imagesDir
+              );
+              const updated: Shot = {
+                ...generatingShot,
+                imagePath,
+                imageHistory,
+                status: 'image-generated',
+              };
               await this.storyboardService.writeShot(projectRoot, updated);
-              this.emitStream({ type: 'shot-image-ready', shotId: shot.id, imagePath: result.imagePath });
+              this.emitStream({ type: 'shot-image-ready', shotId: shot.id, imagePath });
               this.emitStream({ type: 'shot-updated', shotId: shot.id, shot: updated });
               succeeded.push(shot.id);
             }
           } catch (err) {
             console.error(`[Harness] image_generate failed for ${shot.id}:`, err);
+            const rollbackShot: Shot = { ...generatingShot, status: 'prompts-ready' };
+            await this.storyboardService.writeShot(projectRoot, rollbackShot);
+            this.emitStream({ type: 'shot-updated', shotId: shot.id, shot: rollbackShot });
+          } finally {
+            finished.add(shot.id);
           }
           this.emitStream({
             type: 'progress',
-            completed: succeeded.length,
+            completed: finished.size,
             total: targets.length,
             phase: 'image_generate',
           });
@@ -452,7 +609,88 @@ export class VideoCreationHarness {
       );
     }
 
+    await this.cleanupDanglingTempImages(projectRoot, paths.imagesDir);
     return succeeded;
+  }
+
+  private async cleanupDanglingTempImages(projectRoot: string, imagesDir: string): Promise<void> {
+    try {
+      const shots = await this.storyboardService.readAllShots(projectRoot);
+      const referenced = new Set<string>();
+      for (const shot of shots) {
+        if (shot.imagePath) referenced.add(shot.imagePath);
+        for (const histPath of shot.imageHistory ?? []) {
+          referenced.add(histPath);
+        }
+      }
+
+      const entries = await fs.readdir(imagesDir);
+      await Promise.all(
+        entries.map(async (entry) => {
+          if (!/^img-\d+/.test(entry)) return;
+          const fullPath = nodePath.join(imagesDir, entry);
+          if (referenced.has(fullPath)) return;
+          try {
+            await fs.rm(fullPath, { force: true });
+          } catch {
+            // ignore cleanup failures
+          }
+        })
+      );
+    } catch {
+      // best-effort cleanup only
+    }
+  }
+
+  private async promoteShotImageWithVersioning(
+    shot: Shot,
+    generatedImagePath: string,
+    imagesDir: string
+  ): Promise<{ imagePath: string; imageHistory?: string[] }> {
+    const generatedExt = nodePath.extname(generatedImagePath) || '.png';
+    const normalizedCurrentPath = nodePath.join(imagesDir, `${shot.id}${generatedExt}`);
+    let history = [...(shot.imageHistory ?? [])];
+
+    // 1) Move current image to versioned backup if it exists and differs from the generated temp file.
+    if (shot.imagePath && shot.imagePath !== generatedImagePath) {
+      try {
+        await fs.access(shot.imagePath);
+        const currentExt = nodePath.extname(shot.imagePath) || generatedExt;
+        const versionPath = await this.getNextShotImageVersionPath(imagesDir, shot.id, currentExt);
+        await fs.rename(shot.imagePath, versionPath);
+        history = [versionPath, ...history.filter((p) => p !== versionPath && p !== shot.imagePath)];
+      } catch {
+        // Existing path missing/cannot move: continue with generated image promotion.
+      }
+    }
+
+    // 2) Promote generated temp image to canonical shot filename.
+    if (generatedImagePath !== normalizedCurrentPath) {
+      // Remove stale canonical file if it still exists (e.g. not captured in shot.imagePath)
+      try {
+        await fs.rm(normalizedCurrentPath, { force: true });
+      } catch {
+        // Ignore
+      }
+      await fs.rename(generatedImagePath, normalizedCurrentPath);
+    }
+
+    // 3) Keep history deterministic and limited.
+    history = history.filter((p) => p !== normalizedCurrentPath && p !== generatedImagePath).slice(0, 10);
+    return { imagePath: normalizedCurrentPath, imageHistory: history.length > 0 ? history : undefined };
+  }
+
+  private async getNextShotImageVersionPath(imagesDir: string, shotId: string, ext: string): Promise<string> {
+    let version = 1;
+    while (true) {
+      const candidate = nodePath.join(imagesDir, `${shotId}_v${version}${ext}`);
+      try {
+        await fs.access(candidate);
+        version += 1;
+      } catch {
+        return candidate;
+      }
+    }
   }
 
   // ─── Phase 6: Image QA (T3.4) ────────────────────────────────
@@ -590,7 +828,12 @@ export class VideoCreationHarness {
   validatePhaseOutput(phase: HarnessPhase, output: unknown): { valid: boolean; errors: string[] } {
     const errors: string[] = [];
     if (phase === 'storyboard_decompose') {
-      if (!Array.isArray(output)) errors.push('Output must be an array of shots');
+      const sceneObject =
+        typeof output === 'object' &&
+        output !== null &&
+        'scenes' in output &&
+        Array.isArray((output as { scenes?: unknown[] }).scenes);
+      if (!Array.isArray(output) && !sceneObject) errors.push('Output must be shot[] or { scenes: [...] }');
     }
     if (phase === 'prompt_pack') {
       if (Array.isArray(output)) {

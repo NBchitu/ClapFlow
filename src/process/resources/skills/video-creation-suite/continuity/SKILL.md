@@ -42,6 +42,7 @@ For each shot, update:
 - `continuityRefs.sharedProps` — props that must maintain continuity
 - `continuityRefs.sharedScene` — scene ID if consecutive shots share location
 - `qaIssues` — array of detected problems
+- keep `sceneId` unchanged; continuity review must not reassign scenes
 
 ```json
 {
@@ -65,7 +66,7 @@ For each shot, update:
 
 ## Rules
 
-- Return the FULL updated shot list as JSON array
+- Prefer returning an updates array with `shotId` + changed fields only
 - Only add `qaIssues` where actual problems exist (do not add empty arrays)
 - `severity: "error"` = must fix before image generation
 - `severity: "warning"` = should fix but can proceed

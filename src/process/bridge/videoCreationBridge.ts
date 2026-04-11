@@ -78,10 +78,10 @@ export function initVideoCreationBridge(): void {
   });
 
   // ── 生成最终视频（M4 VideoGenService） ───────────────────────
-  videoCreationBridge.generateFinalVideo.provider(async ({ projectRoot }) => {
+  videoCreationBridge.generateFinalVideo.provider(async ({ projectRoot, model }) => {
     const allShots = await storyboardService.readAllShots(projectRoot);
     const shotIds = allShots.map((s) => s.id);
-    const result = await videoCreationHarness.runPhase(projectRoot, 'video_generate');
+    const result = await videoCreationHarness.runPhase(projectRoot, 'video_generate', model);
     const succeeded = result.affectedShotIds;
     const failed = shotIds.filter((id) => !succeeded.includes(id));
     return { succeeded, failed };

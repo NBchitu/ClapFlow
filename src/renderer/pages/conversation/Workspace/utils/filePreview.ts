@@ -80,3 +80,13 @@ export function isPreviewSupportedExt(filename: string): boolean {
 export function isStoryboardFile(filename: string): boolean {
   return filename === 'storyboard.json';
 }
+
+/**
+ * Check whether a file is a storyboard shot json
+ */
+export function isShotFile(filename: string, relativePath?: string): boolean {
+  if (!/^shot-[a-z0-9_-]+\.json$/i.test(filename)) return false;
+
+  const normalizedPath = (relativePath || '').replace(/\\/g, '/');
+  return normalizedPath.includes('/01-storyboard/shots/') || normalizedPath.startsWith('01-storyboard/shots/');
+}

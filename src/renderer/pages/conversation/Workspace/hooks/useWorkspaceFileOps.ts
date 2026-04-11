@@ -18,6 +18,7 @@ import { useCallback } from 'react';
 import type { MessageApi, RenameModalState, DeleteModalState } from '../types';
 import type { FileOrFolderItem } from '@/renderer/utils/file/fileTypes';
 import { getPathSeparator, replacePathInList, updateTreeForRename } from '../utils/treeHelpers';
+import { isShotFile, isStoryboardFile } from '../utils/filePreview';
 
 interface UseWorkspaceFileOpsOptions {
   workspace: string;
@@ -320,8 +321,10 @@ export function useWorkspaceFileOps(options: UseWorkspaceFileOpsOptions) {
 
         // 特殊文件名检查：storyboard.json → 分镜画板预览
         // Special filename check: storyboard.json → storyboard viewer
-        if (nodeData.name === 'storyboard.json') {
+        if (isStoryboardFile(nodeData.name)) {
           contentType = 'storyboard';
+        } else if (isShotFile(nodeData.name, nodeData.relativePath || nodeData.fullPath)) {
+          contentType = 'shot';
         } else if (ext === 'md' || ext === 'markdown') {
           contentType = 'markdown';
         } else if (ext === 'diff' || ext === 'patch') {
@@ -420,6 +423,7 @@ export function useWorkspaceFileOps(options: UseWorkspaceFileOpsOptions) {
             contentType === 'markdown' ||
             contentType === 'image' ||
             contentType === 'storyboard' ||
+            contentType === 'shot' ||
             isLargeTextTruncated
               ? false
               : undefined,

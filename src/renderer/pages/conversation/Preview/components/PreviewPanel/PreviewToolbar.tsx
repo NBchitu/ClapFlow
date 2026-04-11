@@ -207,12 +207,13 @@ const PreviewToolbar: React.FC<PreviewToolbarProps> = ({
   const preferActionButtonsInFront = Boolean(leftExtra);
 
   const toolbarBtn =
-    'flex items-center gap-2px px-8px py-3px rd-4px cursor-pointer transition-colors duration-150 text-12px font-medium text-t-secondary hover:text-t-primary hover:bg-bg-3';
-  const toolbarBtnActive = '!text-white bg-brand hover:!text-white hover:bg-brand-hover';
+    'flex items-center gap-2px px-9px py-4px rd-10px cursor-pointer transition-all duration-150 text-12px font-semibold text-[var(--color-ink,#000)] border-2 border-[var(--color-ink,#000)] bg-[#F5F5F5] shadow-[2px_2px_0_0_var(--color-ink,#000)] hover:bg-[color-mix(in_srgb,var(--color-amber-pop,#FBBF24)_20%,white)] hover:-translate-y-[1px]';
+  const toolbarBtnActive =
+    '!text-[var(--color-ink,#000)] bg-[var(--color-lime-pop,#D9FF00)] border-2 border-[var(--color-ink,#000)] hover:!text-[var(--color-ink,#000)] hover:bg-[var(--color-lime-pop,#D9FF00)]';
   const toolbarIconSize = 12;
 
   return (
-    <div className='flex items-center justify-between h-32px px-10px bg-bg-2 flex-shrink-0 border-b border-border-1 overflow-x-auto'>
+    <div className='flex items-center justify-between h-32px px-10px bg-bg-2 flex-shrink-0 border-b-2 border-[var(--color-ink,#000)] overflow-x-auto'>
       <div className='flex items-center justify-between gap-8px w-full' style={{ minWidth: 'max-content' }}>
         {/* 左侧：Tabs（Markdown/HTML）+ 文件名 / Left: Tabs (Markdown/HTML) + Filename */}
         <div className='flex items-center h-full gap-8px'>

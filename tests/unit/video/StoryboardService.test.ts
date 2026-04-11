@@ -9,7 +9,9 @@ import type { Shot } from '@/common/types/videoCreation';
 function makeShot(id: string, overrides?: Partial<Shot>): Shot {
   return {
     id,
+    sceneId: 'scene-01',
     sceneIndex: 0,
+    sceneShotIndex: 1,
     shotIndex: 0,
     goal: 'test shot',
     sceneDescription: '测试分镜',
@@ -96,6 +98,41 @@ describe('StoryboardService', () => {
 
       const storyboard = await service.readStoryboard(tmpDir);
       expect(storyboard.shotIds).toEqual(reversed);
+    });
+  });
+
+  describe('scene compatibility', () => {
+    it('infers sceneId from sceneIndex for old shots and syncs scene shotIds', async () => {
+      const legacyShot = makeShot('shot-001', {
+        sceneId: undefined,
+        sceneIndex: 0,
+        shotIndex: 1,
+      });
+      await service.writeShot(tmpDir, legacyShot);
+      await service.updateStoryboard(tmpDir, {
+        scenes: [{ id: 'scene-01', name: 'Scene 1', description: '' }],
+        shotIds: ['shot-001'],
+      });
+
+      const shots = await service.readAllShots(tmpDir);
+      expect(shots[0].sceneId).toBe('scene-01');
+      expect(shots[0].sceneShotIndex).toBe(1);
+
+      const storyboard = await service.readStoryboard(tmpDir);
+      expect(storyboard.scenes[0]?.shotIds).toEqual(['shot-001']);
+    });
+
+    it('groups shots by scene', async () => {
+      await service.insertShot(tmpDir, null, { sceneId: 'scene-01', sceneIndex: 0, goal: 'A' });
+      await service.insertShot(tmpDir, null, { sceneId: 'scene-01', sceneIndex: 0, goal: 'B' });
+      await service.insertShot(tmpDir, null, { sceneId: 'scene-02', sceneIndex: 1, goal: 'C' });
+
+      const grouped = await service.readShotsGroupedByScene(tmpDir);
+      const scene1 = grouped.find((group) => group.scene.id === 'scene-01');
+      const scene2 = grouped.find((group) => group.scene.id === 'scene-02');
+
+      expect(scene1?.shots.length).toBe(2);
+      expect(scene2?.shots.length).toBe(1);
     });
   });
 

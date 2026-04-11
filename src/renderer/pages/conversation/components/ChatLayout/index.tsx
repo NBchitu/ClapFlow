@@ -1,4 +1,6 @@
 import { ConfigStorage } from '@/common/config/storage';
+import { ipcBridge } from '@/common';
+import type { IDirOrFile } from '@/common/adapter/ipcBridge';
 import AgentModeSelector from '@/renderer/components/agent/AgentModeSelector';
 import FlexFullContainer from '@/renderer/components/layout/FlexFullContainer';
 import { useLayoutContext } from '@/renderer/hooks/context/LayoutContext';
@@ -11,7 +13,6 @@ import WorkspacePanelHeader, { DesktopWorkspaceToggle } from './WorkspacePanelHe
 import { useConversationTabs } from '@/renderer/pages/conversation/hooks/ConversationTabsContext';
 import { useContainerWidth } from '@/renderer/pages/conversation/hooks/useContainerWidth';
 import { useLayoutConstraints } from '@/renderer/pages/conversation/hooks/useLayoutConstraints';
-import { usePreviewAutoCollapse } from '@/renderer/pages/conversation/hooks/usePreviewAutoCollapse';
 import { useTitleRename } from '@/renderer/pages/conversation/hooks/useTitleRename';
 import { useWorkspaceCollapse } from '@/renderer/pages/conversation/hooks/useWorkspaceCollapse';
 import { PreviewPanel, usePreviewContext } from '@/renderer/pages/conversation/Preview';
@@ -29,6 +30,75 @@ import { ExpandLeft, ExpandRight } from '@icon-park/react';
 import React from 'react';
 import useSWR from 'swr';
 import './chat-layout.css';
+
+function buildPath(root: string, ...parts: string[]): string {
+  const normalizedRoot = root.replace(/[\\/]+$/, '');
+  const separator = normalizedRoot.includes('\\') ? '\\' : '/';
+  return [normalizedRoot, ...parts].join(separator);
+}
+
+function createFallbackStoryboardContent(projectRoot: string): string {
+  const now = new Date().toISOString();
+  return JSON.stringify(
+    {
+      id: 'storyboard-fallback',
+      title: 'Storyboard',
+      projectRoot,
+      scriptPath: buildPath(projectRoot, '00-script', 'script.md'),
+      style: {
+        genre: 'storyboard',
+        visualStyle: 'default',
+        colorPalette: 'default',
+        cameraPreferences: ['static'],
+      },
+      scenes: [],
+      shotIds: [],
+      createdAt: now,
+      updatedAt: now,
+    },
+    null,
+    2
+  );
+}
+
+type StoryboardCandidate = {
+  fullPath: string;
+  relativePath: string;
+};
+
+function isStoryboardRelativePath(relativePath: string): boolean {
+  const normalized = relativePath.replace(/\\/g, '/');
+  return normalized === '01-storyboard/storyboard.json' || normalized.endsWith('/01-storyboard/storyboard.json');
+}
+
+function collectStoryboardCandidates(tree: IDirOrFile[]): StoryboardCandidate[] {
+  const result: StoryboardCandidate[] = [];
+  const visited = new Set<string>();
+
+  const visit = (node: IDirOrFile) => {
+    if (node.isFile && node.name === 'storyboard.json' && isStoryboardRelativePath(node.relativePath || '')) {
+      if (!visited.has(node.fullPath)) {
+        visited.add(node.fullPath);
+        result.push({
+          fullPath: node.fullPath,
+          relativePath: (node.relativePath || '01-storyboard/storyboard.json').replace(/\\/g, '/'),
+        });
+      }
+      return;
+    }
+
+    for (const child of node.children || []) {
+      visit(child);
+    }
+  };
+
+  for (const root of tree) {
+    visit(root);
+  }
+
+  result.sort((a, b) => a.relativePath.localeCompare(b.relativePath));
+  return result;
+}
 
 // headerExtra allows injecting custom actions (e.g., model picker) into the header's right area
 const ChatLayout: React.FC<{
@@ -63,7 +133,7 @@ const ChatLayout: React.FC<{
   const isMobile = Boolean(layout?.isMobile);
 
   // Preview panel state
-  const { isOpen: isPreviewOpen } = usePreviewContext();
+  const { isOpen: isPreviewOpen, openPreview, findPreviewTab } = usePreviewContext();
 
   // --- Hook A: workspace collapse ---
   const { rightSiderCollapsed, setRightSiderCollapsed } = useWorkspaceCollapse({
@@ -127,7 +197,7 @@ const ChatLayout: React.FC<{
     setSplitRatio: setChatSplitRatio,
     createDragHandle: createPreviewDragHandle,
   } = useResizableSplit({
-    defaultWidth: 60,
+    defaultWidth: 40,
     minWidth: dynamicChatMinRatio,
     maxWidth: dynamicChatMaxRatio,
     storageKey: 'chat-preview-split-ratio',
@@ -146,18 +216,7 @@ const ChatLayout: React.FC<{
       isMobile,
     });
 
-  // --- Hook D: preview auto-collapse ---
-  usePreviewAutoCollapse({
-    isPreviewOpen,
-    isDesktop,
-    workspaceEnabled,
-    rightSiderCollapsed,
-    setRightSiderCollapsed,
-    siderCollapsed: layout?.siderCollapsed,
-    setSiderCollapsed: layout?.setSiderCollapsed,
-  });
-
-  // --- Hook E: layout constraints ---
+  // --- Hook D: layout constraints ---
   useLayoutConstraints({
     containerWidth,
     workspaceEnabled,
@@ -172,6 +231,99 @@ const ChatLayout: React.FC<{
     dynamicChatMinRatio,
     dynamicChatMaxRatio,
   });
+
+  const layoutDefaultsKeyRef = React.useRef<string>('');
+  React.useEffect(() => {
+    if (!workspaceEnabled || !isDesktop) return;
+    const key = `${conversationId || ''}::${workspacePath || ''}`;
+    if (layoutDefaultsKeyRef.current === key) return;
+    layoutDefaultsKeyRef.current = key;
+    setRightSiderCollapsed(false);
+    setWorkspaceSplitRatio(Math.min(workspaceSplitRatio, 20));
+    setChatSplitRatio(Math.min(chatSplitRatio, 40));
+  }, [
+    workspaceEnabled,
+    isDesktop,
+    conversationId,
+    workspacePath,
+    setRightSiderCollapsed,
+    workspaceSplitRatio,
+    chatSplitRatio,
+    setWorkspaceSplitRatio,
+    setChatSplitRatio,
+  ]);
+
+  React.useEffect(() => {
+    if (!workspaceEnabled || !isDesktop || !workspacePath) return;
+
+    let cancelled = false;
+    const ensureStoryboardPreview = async () => {
+      try {
+        const tree = await ipcBridge.conversation.getWorkspace.invoke({
+          workspace: workspacePath,
+          path: workspacePath,
+          conversation_id: conversationId || '',
+          search: '',
+        });
+        if (cancelled) return;
+
+        const candidates = collectStoryboardCandidates(tree || []);
+        if (candidates.length === 0) {
+          openPreview(createFallbackStoryboardContent(workspacePath), 'storyboard', {
+            title: 'storyboard.json',
+            fileName: 'storyboard.json',
+            filePath: undefined,
+            workspace: workspacePath,
+            editable: false,
+          });
+          return;
+        }
+
+        const toOpen = candidates.filter(
+          (candidate) => !findPreviewTab('storyboard', undefined, { filePath: candidate.fullPath })
+        );
+
+        if (toOpen.length === 0 && isPreviewOpen) return;
+
+        for (const candidate of toOpen) {
+          if (cancelled) return;
+          try {
+            const content = await ipcBridge.fs.readFile.invoke({ path: candidate.fullPath });
+            if (cancelled) return;
+            openPreview(content, 'storyboard', {
+              title: candidate.relativePath,
+              fileName: 'storyboard.json',
+              filePath: candidate.fullPath,
+              workspace: workspacePath,
+              editable: false,
+            });
+          } catch {
+            openPreview(createFallbackStoryboardContent(workspacePath), 'storyboard', {
+              title: candidate.relativePath,
+              fileName: 'storyboard.json',
+              filePath: candidate.fullPath,
+              workspace: workspacePath,
+              editable: false,
+            });
+          }
+        }
+      } catch {
+        if (cancelled) return;
+        openPreview(createFallbackStoryboardContent(workspacePath), 'storyboard', {
+          title: 'storyboard.json',
+          fileName: 'storyboard.json',
+          filePath: undefined,
+          workspace: workspacePath,
+          editable: false,
+        });
+      }
+    };
+
+    void ensureStoryboardPreview();
+    return () => {
+      cancelled = true;
+    };
+  }, [workspaceEnabled, isDesktop, workspacePath, conversationId, isPreviewOpen, findPreviewTab, openPreview]);
 
   const headerBlock = (
     <>
@@ -268,7 +420,7 @@ const ChatLayout: React.FC<{
               flexGrow: 1,
               flexShrink: 1,
               flexBasis: 0,
-              border: '1px solid var(--bg-3)',
+              border: '2px solid var(--color-ink, #000)',
               width: layout?.isMobile ? 'calc(100% - 16px)' : undefined,
               maxWidth: layout?.isMobile ? 'calc(100% - 16px)' : undefined,
               minWidth: layout?.isMobile ? 0 : '260px',
@@ -298,7 +450,7 @@ const ChatLayout: React.FC<{
               width: rightSiderCollapsed ? '0px' : isPreviewOpen ? `${Math.round(workspaceWidthPx)}px` : undefined,
               minWidth: rightSiderCollapsed ? '0px' : '220px',
               overflow: 'hidden',
-              borderLeft: rightSiderCollapsed ? 'none' : '1px solid var(--bg-3)',
+              borderLeft: rightSiderCollapsed ? 'none' : '2px solid var(--color-ink, #000)',
             }}
           >
             {isDesktop &&

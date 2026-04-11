@@ -11,6 +11,7 @@ export type CameraMove = 'static' | 'push' | 'pull' | 'pan' | 'tilt' | 'handheld
 export type ShotStatus =
   | 'pending'
   | 'prompts-ready'
+  | 'image-generating'
   | 'image-generated'
   | 'image-approved'
   | 'video-generated'
@@ -44,7 +45,11 @@ export type ShotHistoryEntry = {
 
 export type Shot = {
   id: string;
+  /** Stable scene identifier; fallback to sceneIndex for old projects */
+  sceneId?: string;
   sceneIndex: number;
+  /** 1-based index inside its scene */
+  sceneShotIndex?: number;
   shotIndex: number;
   goal: string;
   sceneDescription: string;
@@ -83,6 +88,8 @@ export type SceneInfo = {
   description: string;
   timeOfDay?: string;
   location?: string;
+  /** Ordered shot ids that belong to this scene */
+  shotIds?: string[];
 };
 
 export type Storyboard = {
@@ -267,6 +274,8 @@ export type GenerateVideoParams = {
   shotIds?: string[];
   provider?: 'kling' | 'runway';
   animaticOnly?: boolean;
+  /** AI model to use for video generation */
+  model?: VideoModelConfig;
 };
 
 export type GenerateVideoResult = {

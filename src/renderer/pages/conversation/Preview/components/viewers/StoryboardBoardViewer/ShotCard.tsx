@@ -5,10 +5,10 @@
  */
 
 import type { Shot } from '@/common/types/videoCreation';
-import { Button, Spin } from '@arco-design/web-react';
+import { Button } from '@arco-design/web-react';
 import React from 'react';
 import { useTranslation } from 'react-i18next';
-import { resolveExtensionAssetUrl } from '@renderer/utils/platform';
+import { toPreviewImageSrc } from './pathUtils';
 
 type CardSize = 'S' | 'M' | 'L';
 
@@ -26,6 +26,32 @@ interface ShotCardProps {
 const CARD_WIDTH: Record<CardSize, number> = { S: 100, M: 160, L: 240 };
 const CARD_ASPECT = 9 / 16; // height = width * aspect
 
+function MechanicalSpinner({ size = 26 }: { size?: number }) {
+  const notchLength = Math.round(size * 0.24);
+  const notchWidth = Math.max(2, Math.round(size * 0.1));
+  const radius = Math.round(size * 0.34);
+
+  return (
+    <span className='storyboard-notch-spinner' style={{ width: size, height: size }}>
+      <span className='storyboard-notch-spinner__ring'>
+        {Array.from({ length: 8 }).map((_, index) => (
+          <span
+            // eslint-disable-next-line react/no-array-index-key
+            key={index}
+            className='storyboard-notch-spinner__notch'
+            style={{
+              width: notchWidth,
+              height: notchLength,
+              transform: `translate(-50%, -50%) rotate(${index * 45}deg) translateY(-${radius}px)`,
+              background: index === 0 ? 'var(--color-lime-pop,#D9FF00)' : 'var(--color-ink,#000)',
+            }}
+          />
+        ))}
+      </span>
+    </span>
+  );
+}
+
 /** Returns CSS class + content for the status badge */
 function useStatusBadge(shot: Shot): { colorClass: string; icon: string } {
   const hasError = shot.qaIssues?.some((q) => q.severity === 'error');
@@ -37,6 +63,8 @@ function useStatusBadge(shot: Shot): { colorClass: string; icon: string } {
       return { colorClass: 'bg-gray-400', icon: '' };
     case 'prompts-ready':
       return { colorClass: 'bg-blue-500', icon: '' };
+    case 'image-generating':
+      return { colorClass: 'bg-indigo-500 animate-pulse', icon: '' };
     case 'image-generated':
       return { colorClass: 'bg-green-500', icon: '' };
     case 'image-approved':
@@ -106,15 +134,26 @@ const ShotCard: React.FC<ShotCardProps> = ({
       {/* Thumbnail area */}
       <div className='relative w-full bg-bg-3 flex items-center justify-center' style={{ height: h }}>
         {isImageLoading ? (
-          <Spin size={cardSize === 'S' ? 12 : 20} />
+          <MechanicalSpinner size={cardSize === 'S' ? 18 : 26} />
         ) : shot.imagePath ? (
-          <img src={resolveExtensionAssetUrl(`file://${shot.imagePath}`)} alt={shot.goal} className='w-full h-full object-cover' loading='lazy' />
+          <img
+            src={toPreviewImageSrc(shot.imagePath)}
+            alt={shot.goal}
+            className='w-full h-full object-cover'
+            loading='lazy'
+          />
         ) : (
           <span className='text-10px text-t-tertiary select-none'>{shot.shotType ?? '—'}</span>
         )}
 
         {/* Status badge */}
         {renderBadge()}
+
+        {shot.status === 'image-generating' && (
+          <span className='absolute inset-0 flex items-center justify-center bg-[rgba(255,253,245,0.72)] backdrop-blur-[1px] pointer-events-none'>
+            <MechanicalSpinner size={28} />
+          </span>
+        )}
 
         {/* Hover action menu */}
         {(onInsertBefore ?? onDuplicate ?? onDelete) && (

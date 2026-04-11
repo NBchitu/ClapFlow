@@ -35,37 +35,37 @@ You are a professional storyboard artist and cinematographer. Break down the scr
 
 ## Output Format
 
-Return a JSON array of shot objects:
+Return a JSON object grouped by scenes:
 
 ```json
-[
-  {
-    "id": "shot-001",
-    "sceneIndex": 0,
-    "shotIndex": 0,
-    "goal": "one sentence narrative purpose of this shot",
-    "sceneDescription": "Chinese description of what happens",
-    "characters": ["char-A"],
-    "action": "character action description",
-    "dialogue": "spoken dialogue if any",
-    "shotType": "MS",
-    "cameraMove": "static",
-    "duration": 4,
-    "assetRefs": [],
-    "lockedTokens": [],
-    "continuityRefs": {},
-    "imagePrompt": "",
-    "videoPrompt": "",
-    "status": "pending",
-    "locked": false
-  }
-]
+{
+  "scenes": [
+    {
+      "id": "scene-01",
+      "name": "Cafe Interior",
+      "description": "Main character enters and sits by the window.",
+      "shots": [
+        {
+          "sceneId": "scene-01",
+          "goal": "one sentence narrative purpose of this shot",
+          "sceneDescription": "Chinese description of what happens",
+          "characters": ["char-A"],
+          "action": "character action description",
+          "dialogue": "spoken dialogue if any",
+          "shotType": "MS",
+          "cameraMove": "static",
+          "duration": 4
+        }
+      ]
+    }
+  ]
+}
 ```
 
 ## Rules
 
 - Every shot needs a clear `goal`
-- `id` format: `shot-XXX` (zero-padded, sequential)
+- Scene `id` format: `scene-XX` (zero-padded, sequential)
+- Shot `id` is optional (system will re-index); if provided, use `shot-XXX`
 - `duration` in seconds, must be between 1 and 30
-- Leave `imagePrompt` and `videoPrompt` empty (filled by prompt skill)
-- Group shots by scene using `sceneIndex`
+- Group shots under `scenes[].shots`; do not output a flat shot list unless explicitly requested

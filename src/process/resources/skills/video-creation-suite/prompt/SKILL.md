@@ -67,6 +67,7 @@ Include ALL locked tokens in every shot that features the character.
 ## Output Format
 
 Return the full shot list with `imagePrompt`, `videoPrompt`, and `lockedTokens` filled in. Status should be updated to `prompts-ready`.
+If input is grouped by scene, preserve each shot's `sceneId` and ordering.
 
 ## Rules
 
@@ -75,3 +76,4 @@ Return the full shot list with `imagePrompt`, `videoPrompt`, and `lockedTokens` 
 - `lockedTokens` must be a subset of actual words used in `imagePrompt`
 - Keep imagePrompt under 150 words
 - Keep videoPrompt under 60 words
+- Keep scene continuity: adjacent shots in the same `sceneId` should share stable environment/style tokens

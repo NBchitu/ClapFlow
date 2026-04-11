@@ -1,0 +1,10 @@
+.processingEdge {
+  animation: dash-flow 1.4s linear infinite;
+}
+
+@keyframes dash-flow {
+  to {
+    stroke-dashoffset: -28;
+  }
+}
+

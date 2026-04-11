@@ -25,6 +25,7 @@ import PptViewer from '../viewers/PptViewer';
 import TextEditor from '../editors/TextEditor';
 import URLViewer from '../viewers/URLViewer';
 import StoryboardBoardViewer from '../viewers/StoryboardBoardViewer';
+import ShotInspectorViewer from '../viewers/StoryboardBoardViewer/ShotInspectorViewer';
 import {
   PreviewTabs,
   PreviewToolbar,
@@ -654,6 +655,9 @@ const PreviewPanel: React.FC = () => {
     } else if (contentType === 'storyboard') {
       // 分镜画板预览 / Storyboard board viewer
       return <StoryboardBoardViewer content={content} filePath={metadata?.filePath} />;
+    } else if (contentType === 'shot') {
+      // 单镜头详情预览 / Shot inspector viewer
+      return <ShotInspectorViewer content={content} filePath={metadata?.filePath} />;
     }
 
     return null;

@@ -22,6 +22,7 @@ export const FILE_EXTENSION_MAP: Record<PreviewContentType, readonly string[]> =
   diff: [], // diff 类型通常通过其他方式判断 / diff type is usually determined by other means
   url: [], // url 类型用于网页预览，无扩展名映射 / url type for web preview, no extension mapping
   storyboard: [], // storyboard 通过文件名 storyboard.json 判断 / storyboard is detected by filename
+  shot: [], // shot 通过路径 01-storyboard/shots/shot-*.json 判断 / shot is detected by pathname
 };
 
 /**

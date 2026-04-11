@@ -84,7 +84,7 @@ const Layout: React.FC<{
   sider: React.ReactNode;
   onSessionClick?: () => void;
 }> = ({ sider, onSessionClick: _onSessionClick }) => {
-  const [collapsed, setCollapsed] = useState(false);
+  const [collapsed, setCollapsed] = useState(true);
   const [isMobile, setIsMobile] = useState(false);
   const [viewportWidth, setViewportWidth] = useState<number>(() =>
     typeof window === 'undefined' ? 390 : window.innerWidth

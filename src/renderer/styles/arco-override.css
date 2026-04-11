@@ -165,14 +165,36 @@ body[arco-theme='dark'] .arco-message-error {
   background: linear-gradient(90deg, rgba(255, 221, 219, 0.3) 0%, rgba(255, 243, 240, 0.3) 100%) !important;
 }
 
-/* Workspace tree selection styles - use text color instead of background */
+/* Workspace tree selection styles - high contrast engineering look */
 .workspace-tree .arco-tree-node-selected .arco-tree-node-title {
-  background-color: transparent !important;
+  background-color: var(--color-lime-pop, #d9ff00) !important;
+  color: var(--color-ink, #000) !important;
+  border: 2px solid var(--color-ink, #000) !important;
+  border-radius: 8px !important;
+  font-weight: 700 !important;
 }
 
-/* Workspace tree hover styles - more visible hover effect */
+/* Workspace tree hover styles */
 .workspace-tree .arco-tree-node:hover .arco-tree-node-title {
-  background-color: var(--color-fill-3) !important;
+  background-color: color-mix(in srgb, var(--color-amber-pop, #fbbf24) 20%, white) !important;
+  border: 2px solid var(--color-ink, #000) !important;
+  border-radius: 8px !important;
+}
+
+/* Tree lines: thicker + dashed */
+.workspace-tree.arco-tree-show-line .arco-tree-node-indent-block::before,
+.workspace-tree.arco-tree-show-line .arco-tree-node-is-leaf:not(.arco-tree-node-is-tail) .arco-tree-node-indent::after {
+  border-color: var(--color-ink, #000) !important;
+  border-left-width: 2px !important;
+  border-left-style: dashed !important;
+}
+
+/* Tree switcher icon: monochrome + bolder */
+.workspace-tree .arco-tree-node-switcher svg {
+  color: var(--color-ink, #000) !important;
+  fill: currentColor !important;
+  stroke: currentColor !important;
+  stroke-width: 2.2px !important;
 }
 
 /* Alert styles - content is now displayed below the Alert card, so these rules are no longer needed */

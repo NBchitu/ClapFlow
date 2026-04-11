@@ -22,6 +22,20 @@
   background-color: var(--bg-active);
 }
 
+.workspace-title-label {
+  color: var(--color-ink, #000) !important;
+  font-weight: 800 !important;
+}
+
+.workspace-toolbar-row {
+  border-bottom: 2px solid var(--color-ink, #000);
+  padding-bottom: 6px;
+}
+
+.workspace-toolbar-icon-btn {
+  color: var(--color-ink, #000) !important;
+}
+
 .workspace-toggle-floating {
   background-color: var(--bg-2);
   border: 1px solid var(--bg-3);

@@ -15,7 +15,8 @@ export type PreviewContentType =
   | 'excel'
   | 'image'
   | 'url'
-  | 'storyboard';
+  | 'storyboard'
+  | 'shot';
 
 export interface PreviewHistoryTarget {
   contentType: PreviewContentType;

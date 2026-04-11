@@ -55,7 +55,8 @@ Given a `projectRoot` path (ask the user if not provided), create all required d
       "name": "<scene name>",
       "description": "<scene description>",
       "timeOfDay": "<morning/day/evening/night>",
-      "location": "<location name>"
+      "location": "<location name>",
+      "shotIds": ["shot-001", "shot-002"]
     }
   ],
   "shotIds": ["shot-001", "shot-002", "shot-003"],
@@ -79,7 +80,9 @@ Given a `projectRoot` path (ask the user if not provided), create all required d
 ```json
 {
   "id": "shot-001",
+  "sceneId": "scene-01",
   "sceneIndex": 0,
+  "sceneShotIndex": 1,
   "shotIndex": 1,
   "goal": "one sentence: the narrative purpose of this shot",
   "sceneDescription": "describe what the viewer sees",
@@ -111,6 +114,8 @@ Given a `projectRoot` path (ask the user if not provided), create all required d
 - `status`: always `"pending"` when first created
 - `duration`: seconds (integer, 1–30)
 - `sceneIndex`: 0-based index matching position in `storyboard.json scenes[]`
+- `sceneId`: must match one entry in `storyboard.json scenes[].id`
+- `sceneShotIndex`: 1-based index inside current scene
 - `shotIndex`: 1-based sequential number
 
 ## Step 4: Fill in Image and Video Prompts
@@ -154,4 +159,5 @@ After all files are written, tell the user:
 - Create all directories before writing files
 - `storyboard.json` must be written before shot files
 - Shot IDs in `storyboard.json`'s `shotIds` array must exactly match the filenames in `shots/`
+- `scenes[].shotIds` must be kept in sync with each shot's `sceneId`
 - The image generation and video generation phases are handled by the UI after you complete the text phases
