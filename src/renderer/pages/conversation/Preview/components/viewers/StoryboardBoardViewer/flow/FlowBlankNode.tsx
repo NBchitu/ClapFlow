@@ -10,8 +10,8 @@ import type { FlowBlankNode } from './types';
 
 const FlowBlankNode: React.FC<NodeProps<FlowBlankNode>> = () => {
   return (
-    <div className='w-252px h-214px rounded-10px border-2 border-dashed border-[var(--color-ink,#000)] bg-[var(--color-paper,#FFFDF5)]/60 flex items-center justify-center'>
-      <span className='text-10px text-[var(--color-ink,#000)]/70'>空白</span>
+    <div className='w-[320px] h-[300px] rounded-[12px] border border-dashed border-gray-300 bg-gray-50 flex items-center justify-center opacity-60'>
+      <span className='text-[12px] font-bold tracking-widest text-gray-400'>EMPTY SHOT</span>
     </div>
   );
 };

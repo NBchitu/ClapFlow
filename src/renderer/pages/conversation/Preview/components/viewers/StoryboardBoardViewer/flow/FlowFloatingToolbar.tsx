@@ -15,34 +15,26 @@ const FlowFloatingToolbar: React.FC = () => {
   const zoomText = useMemo(() => `${Math.round(zoom * 100)}%`, [zoom]);
 
   return (
-    <Panel position='top-right'>
-      <div className='flex items-center gap-6px p-6px rounded-10px border-2 border-[var(--color-ink,#000)] bg-white shadow-[4px_4px_0_0_var(--color-ink,#000)]'>
-        <div className='flex items-stretch overflow-hidden rounded-8px border-2 border-[var(--color-ink,#000)] shadow-[2px_2px_0_0_var(--color-ink,#000)]'>
-          <Button
-            size='mini'
-            type='text'
-            className='!h-28px !px-10px !rounded-none !border-none !bg-[#4b5563] !text-white !font-bold hover:!bg-[#374151]'
-            onClick={() => void flow.zoomOut({ duration: 180 })}
-          >
-            −
-          </Button>
-          <Button
-            size='mini'
-            type='text'
-            className='!h-28px !px-12px !rounded-none !border-l-2 !border-r-2 !border-[var(--color-ink,#000)] !bg-white !text-[var(--color-ink,#000)] !font-700'
-            onClick={() => void flow.fitView({ duration: 220, maxZoom: 1.2 })}
-          >
-            {zoomText}
-          </Button>
-          <Button
-            size='mini'
-            type='text'
-            className='!h-28px !px-10px !rounded-none !border-none !bg-[#4b5563] !text-white !font-bold hover:!bg-[#374151]'
-            onClick={() => void flow.zoomIn({ duration: 180 })}
-          >
-            +
-          </Button>
-        </div>
+    <Panel position='bottom-left' className='m-[24px] pointer-events-auto'>
+      <div className='flex flex-col items-center bg-white border border-gray-200 rounded-full overflow-hidden shadow-sm'>
+        <button
+          className='w-[44px] h-[44px] flex items-center justify-center text-gray-700 hover:bg-gray-50 transition-colors border-b border-gray-200 focus:outline-none'
+          onClick={() => void flow.zoomIn({ duration: 180 })}
+        >
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+        </button>
+        <button
+          className='w-[44px] h-[44px] flex items-center justify-center text-gray-700 hover:bg-gray-50 transition-colors border-b border-gray-200 focus:outline-none'
+          onClick={() => void flow.zoomOut({ duration: 180 })}
+        >
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+        </button>
+        <button
+          className='w-[44px] h-[44px] flex items-center justify-center text-gray-700 hover:bg-gray-50 transition-colors focus:outline-none'
+          onClick={() => void flow.fitView({ duration: 220, maxZoom: 1.2 })}
+        >
+           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M4 14v4h4"></path><path d="M20 14v4h-4"></path><path d="M4 10V6h4"></path><path d="M20 10V6h-4"></path></svg>
+        </button>
       </div>
     </Panel>
   );

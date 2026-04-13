@@ -11,6 +11,9 @@ import { safeJsonParse } from '@/common/chat/imageGenCore';
 import type { VideoModelConfig } from '@/common/types/videoCreation';
 import type { TProviderWithModel } from '@/common/config/storage';
 
+const PRIMARY_VIDEO_SKILL_SUITE = 'cinematic-video-creation-suite';
+const FALLBACK_VIDEO_SKILL_SUITE = 'video-creation-suite';
+
 /** Convert VideoModelConfig to TProviderWithModel for ClientFactory */
 function toProvider(cfg: VideoModelConfig): TProviderWithModel {
   return {
@@ -66,18 +69,33 @@ export async function callVideoAi<T>(
 }
 
 /**
- * Load the body of a video-creation-suite sub-skill SKILL.md file.
- * Returns empty string if the file cannot be found (graceful degradation).
+ * Load the body of a video sub-skill SKILL.md file.
+ * Priority:
+ * 1) cinematic-video-creation-suite (director-grade creative workflow)
+ * 2) video-creation-suite (legacy fallback)
+ *
+ * Returns empty string if the file cannot be found in either suite.
  */
 export async function loadVideoSkillContent(subSkillName: string): Promise<string> {
   try {
     const { getBuiltinSkillsCopyDir } = await import('@process/utils/initStorage');
-    const skillPath = nodePath.join(getBuiltinSkillsCopyDir(), 'video-creation-suite', subSkillName, 'SKILL.md');
-    const raw = await fs.readFile(skillPath, 'utf-8');
-    // Remove YAML frontmatter
-    return raw.replace(/^---[\s\S]*?---\s*\n?/, '').trim();
+    const baseDir = getBuiltinSkillsCopyDir();
+    const skillSuites = [PRIMARY_VIDEO_SKILL_SUITE, FALLBACK_VIDEO_SKILL_SUITE];
+    for (const suite of skillSuites) {
+      const skillPath = nodePath.join(baseDir, suite, subSkillName, 'SKILL.md');
+      try {
+        const raw = await fs.readFile(skillPath, 'utf-8');
+        // Remove YAML frontmatter
+        return raw.replace(/^---[\s\S]*?---\s*\n?/, '').trim();
+      } catch {
+        // Try next suite.
+      }
+    }
   } catch {
-    console.warn(`[VideoAiCaller] Skill not found: video-creation-suite/${subSkillName}`);
-    return '';
+    // Fall through to unified warning.
   }
+  console.warn(
+    `[VideoAiCaller] Skill not found in suites: ${PRIMARY_VIDEO_SKILL_SUITE}/${subSkillName}, ${FALLBACK_VIDEO_SKILL_SUITE}/${subSkillName}`
+  );
+  return '';
 }

@@ -52,13 +52,42 @@ Return a JSON object grouped by scenes:
           "characters": ["char-A"],
           "action": "character action description",
           "dialogue": "spoken dialogue if any",
+          "assetRefs": ["char-lulu", "prop-basket"],
           "shotType": "MS",
           "cameraMove": "static",
           "duration": 4
         }
       ]
     }
-  ]
+  ],
+  "assets": {
+    "characters": [
+      {
+        "id": "char-lulu",
+        "name": "LuLu",
+        "appearance": "small squirrel with orange-brown fur and round eyes",
+        "description": "main character squirrel",
+        "prompt": "small squirrel, orange-brown fur, fluffy tail, children's animation style",
+        "lockedTokens": ["LuLu"]
+      }
+    ],
+    "scenes": [
+      {
+        "id": "scene-01",
+        "name": "Autumn Forest",
+        "description": "warm forest path with fallen leaves",
+        "prompt": "autumn forest, warm sunlight, fallen leaves, cozy cinematic atmosphere"
+      }
+    ],
+    "props": [
+      {
+        "id": "prop-basket",
+        "name": "NutBasket",
+        "description": "woven basket full of acorns",
+        "prompt": "woven basket filled with acorns, natural fibers, detailed texture"
+      }
+    ]
+  }
 }
 ```
 
@@ -69,3 +98,6 @@ Return a JSON object grouped by scenes:
 - Shot `id` is optional (system will re-index); if provided, use `shot-XXX`
 - `duration` in seconds, must be between 1 and 30
 - Group shots under `scenes[].shots`; do not output a flat shot list unless explicitly requested
+- Asset names must not contain spaces; use `_` if needed
+- Use `@AssetName` mentions in shot text when helpful for readability (supports Chinese names)
+- Each shot should provide `assetRefs` whenever character/scene/prop ownership is clear

@@ -15,7 +15,8 @@
 
 ## 当用户提供剧本时
 
-严格按照 `video-creation-suite` 技能中的步骤执行。
+优先严格按照 `cinematic-video-creation-suite` 技能中的步骤执行。
+若该技能缺少某个子步骤，再回退参考 `video-creation-suite`。
 
 关键要点：
 1. **通过写文件来创建项目**，按技能中规定的目录结构和 JSON schema 操作。

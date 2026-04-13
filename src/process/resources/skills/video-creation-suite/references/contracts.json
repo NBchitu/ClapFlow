@@ -65,8 +65,52 @@
                       "sceneDescription": { "type": "string" },
                       "characters": { "type": "array", "items": { "type": "string" } },
                       "action": { "type": "string" },
-                      "dialogue": { "type": "string" }
+                      "dialogue": { "type": "string" },
+                      "assetRefs": { "type": "array", "items": { "type": "string" } }
                     }
+                  }
+                }
+              }
+            }
+          },
+          "assets": {
+            "type": "object",
+            "properties": {
+              "characters": {
+                "type": "array",
+                "items": {
+                  "required": ["name"],
+                  "properties": {
+                    "id": { "type": "string" },
+                    "name": { "type": "string" },
+                    "description": { "type": "string" },
+                    "appearance": { "type": "string" },
+                    "prompt": { "type": "string" },
+                    "lockedTokens": { "type": "array", "items": { "type": "string" } }
+                  }
+                }
+              },
+              "scenes": {
+                "type": "array",
+                "items": {
+                  "required": ["name"],
+                  "properties": {
+                    "id": { "type": "string" },
+                    "name": { "type": "string" },
+                    "description": { "type": "string" },
+                    "prompt": { "type": "string" }
+                  }
+                }
+              },
+              "props": {
+                "type": "array",
+                "items": {
+                  "required": ["name"],
+                  "properties": {
+                    "id": { "type": "string" },
+                    "name": { "type": "string" },
+                    "description": { "type": "string" },
+                    "prompt": { "type": "string" }
                   }
                 }
               }
@@ -87,7 +131,8 @@
             "id": { "type": "string" },
             "imagePrompt": { "type": "string", "minLength": 10 },
             "videoPrompt": { "type": "string", "minLength": 5 },
-            "lockedTokens": { "type": "array", "items": { "type": "string" } }
+            "lockedTokens": { "type": "array", "items": { "type": "string" } },
+            "assetRefs": { "type": "array", "items": { "type": "string" } }
           }
         }
       }

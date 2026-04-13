@@ -41,13 +41,15 @@ const DEFAULT_CANVAS_VIEWPORT: Viewport = { x: 0, y: 0, zoom: 0.5 };
 const FlowSceneNodeView: React.FC<NodeProps<FlowSceneNode>> = ({ data }) => {
   const shotCount = data.shotCount ?? data.scene.shotIds?.length ?? 0;
   return (
-    <div className='w-full h-full rounded-12px border-2 border-[var(--color-ink,#000)] bg-white shadow-[4px_4px_0_0_var(--color-ink,#000)] p-10px transition-all duration-150 hover:border-[var(--color-lime-pop,#D9FF00)] hover:shadow-[6px_6px_0_0_var(--color-ink,#000)]'>
-      <div className='inline-flex items-center gap-5px px-8px py-3px rounded-7px border-2 border-[var(--color-ink,#000)] bg-[var(--color-ink,#000)] text-[var(--color-lime-pop,#D9FF00)] font-bold text-10px shadow-[2px_2px_0_0_var(--color-ink,#000)]'>
-        <span>{data.scene.name}</span>
-        <span className='text-white/90'>{shotCount}</span>
+    <div className='w-full h-full rounded-[16px] border border-gray-200 bg-white/40 shadow-sm pt-[20px] px-[24px] pb-[20px] transition-all duration-150 relative'>
+      <div className='flex items-center gap-[12px] mb-[16px]'>
+        <div className='inline-flex items-center px-[8px] py-[4px] rounded-[6px] bg-gray-100/80 text-gray-600 font-bold text-[10px]'>
+          <span>SCENE</span>
+        </div>
+        <span className='text-[18px] font-bold text-gray-900'>{data.scene.name}</span>
       </div>
       {data.scene.description ? (
-        <p className='mt-7px text-11px leading-16px text-[var(--color-ink,#000)] font-semibold line-clamp-2'>
+        <p className='text-[13px] leading-relaxed text-gray-500 line-clamp-2'>
           {data.scene.description}
         </p>
       ) : null}
@@ -104,7 +106,7 @@ const FlowCanvasView: React.FC<FlowCanvasViewProps> = ({
   );
 
   return (
-    <div className='flex-1 bg-[var(--color-paper,#FFFDF5)]'>
+    <div className='flex-1 bg-white'>
       <ReactFlow
         nodes={nodes}
         edges={edges}
@@ -121,7 +123,10 @@ const FlowCanvasView: React.FC<FlowCanvasViewProps> = ({
         edgesFocusable={false}
         className='w-full h-full'
       >
-        <Background variant={BackgroundVariant.Dots} color='rgba(0,0,0,0.1)' gap={20} size={1.2} />
+        <Background variant={BackgroundVariant.Dots} color='rgba(0,0,0,0.1)' gap={20} size={1.5} />
+        <div className="absolute top-[20px] left-[24px] pointer-events-none z-[10] font-bold tracking-[0.4em] text-gray-400/50 text-[10px] uppercase">
+          A I O N &nbsp; S T O R Y B O A R D &nbsp; S Y S T E M &nbsp; V 1 . 0 . 4
+        </div>
         <FlowFloatingToolbar />
       </ReactFlow>
     </div>

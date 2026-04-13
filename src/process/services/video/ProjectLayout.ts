@@ -15,6 +15,10 @@ export function getProjectPaths(projectRoot: string): ProjectPaths {
   const root = projectRoot;
   const storyboardDir = nodePath.join(root, '01-storyboard');
   const assetsDir = nodePath.join(root, '02-assets');
+  const assetReferencesDir = nodePath.join(assetsDir, 'references');
+  const characterRefsDir = nodePath.join(assetReferencesDir, 'character');
+  const sceneRefsDir = nodePath.join(assetReferencesDir, 'scene');
+  const propRefsDir = nodePath.join(assetReferencesDir, 'prop');
   const memoryDir = nodePath.join(root, '90-memory');
   const logsDir = nodePath.join(root, '99-logs');
 
@@ -28,6 +32,10 @@ export function getProjectPaths(projectRoot: string): ProjectPaths {
     charactersDir: nodePath.join(assetsDir, 'characters'),
     scenesDir: nodePath.join(assetsDir, 'scenes'),
     propsDir: nodePath.join(assetsDir, 'props'),
+    assetReferencesDir,
+    characterRefsDir,
+    sceneRefsDir,
+    propRefsDir,
     stylePresetsJson: nodePath.join(assetsDir, 'style-presets.json'),
     imagesDir: nodePath.join(root, '03-images'),
     videosDir: nodePath.join(root, '04-videos'),
@@ -52,6 +60,10 @@ export async function initProjectLayout(projectRoot: string): Promise<void> {
     paths.charactersDir,
     paths.scenesDir,
     paths.propsDir,
+    paths.assetReferencesDir,
+    paths.characterRefsDir,
+    paths.sceneRefsDir,
+    paths.propRefsDir,
     paths.imagesDir,
     paths.videosDir,
     paths.memoryDir,

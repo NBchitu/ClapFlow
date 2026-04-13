@@ -4,6 +4,7 @@ import * as path from 'node:path';
 import * as fs from 'node:fs/promises';
 import { initProjectLayout, getProjectPaths } from '@process/services/video/ProjectLayout';
 import { StoryboardService } from '@process/services/video/StoryboardService';
+import { AssetService } from '@process/services/video/AssetService';
 import type { Shot } from '@/common/types/videoCreation';
 
 const mockExecuteImageGeneration = vi.hoisted(() => vi.fn());
@@ -55,11 +56,13 @@ function makeShot(overrides?: Partial<Shot>): Shot {
 describe('VideoCreationHarness image versioning', () => {
   let tmpDir: string;
   let storyboardService: StoryboardService;
+  let assetService: AssetService;
 
   beforeEach(async () => {
     tmpDir = await fs.mkdtemp(path.join(os.tmpdir(), 'harness-image-version-'));
     await initProjectLayout(tmpDir);
     storyboardService = new StoryboardService();
+    assetService = new AssetService();
 
     mockProcessConfigGet.mockReset();
     mockProcessConfigGet.mockResolvedValue({
@@ -139,5 +142,89 @@ describe('VideoCreationHarness image versioning', () => {
     const updated = await storyboardService.readShot(tmpDir, 'shot-001');
     expect(updated.imagePath).toBe(currentImagePath);
     expect(updated.imageHistory?.[0]).toBe(versionedPath);
+  });
+
+  it('passes resolved image_uris when shot has bound asset references', async () => {
+    const { VideoCreationHarness } = await import('@process/task/video/VideoCreationHarness');
+    const harness = new VideoCreationHarness();
+    const paths = getProjectPaths(tmpDir);
+
+    const sourceRef = path.join(tmpDir, 'seed-ref.png');
+    await fs.writeFile(sourceRef, Buffer.from('ref-image'));
+    const character = await assetService.createAsset(tmpDir, 'character', { id: 'char-lulu', name: '露露' });
+    const characterWithRef = await assetService.addAssetReferenceImages({
+      projectRoot: tmpDir,
+      type: 'character',
+      id: character.id,
+      sourcePaths: [sourceRef],
+    });
+    const firstRef = characterWithRef.referenceImagePaths?.[0];
+    expect(firstRef).toBeTruthy();
+
+    const shot = makeShot({
+      characters: ['露露'],
+      assetRefs: ['char-lulu'],
+      imagePrompt: 'cinematic shot of @露露',
+    });
+    await setupSingleShot(shot);
+
+    const tempGeneratedPath = path.join(paths.imagesDir, 'img-333.png');
+    await fs.writeFile(tempGeneratedPath, Buffer.from('new-image'));
+    mockExecuteImageGeneration.mockResolvedValue({
+      success: true,
+      imagePath: tempGeneratedPath,
+    });
+
+    const result = await harness.runPhase(tmpDir, 'image_generate');
+    expect(result.status).toBe('completed');
+    expect(result.affectedShotIds).toContain('shot-001');
+
+    const firstCallArgs = mockExecuteImageGeneration.mock.calls[0]?.[0] as { image_uris?: string[] };
+    expect(firstCallArgs.image_uris?.length).toBeGreaterThan(0);
+    expect(firstCallArgs.image_uris?.[0]).toContain('02-assets/references/character/char-lulu');
+    expect((firstCallArgs as { prompt?: string }).prompt).toContain('参考图片与资产对应关系');
+    expect((firstCallArgs as { prompt?: string }).prompt).toContain('图片1为露露');
+    expect((firstCallArgs as { prompt?: string }).prompt).toContain('cinematic shot of 露露');
+  });
+
+  it('prepends asset context prompt when no reference image is available', async () => {
+    const { VideoCreationHarness } = await import('@process/task/video/VideoCreationHarness');
+    const harness = new VideoCreationHarness();
+    const paths = getProjectPaths(tmpDir);
+
+    await assetService.createAsset(tmpDir, 'character', {
+      id: 'char-lulu',
+      name: '露露',
+      prompt: 'small squirrel in orange fur',
+      referenceImagePaths: [],
+    });
+
+    const shot = makeShot({
+      characters: ['露露'],
+      assetRefs: ['char-lulu'],
+      imagePrompt: 'cinematic shot of @露露',
+    });
+    await setupSingleShot(shot);
+
+    const tempGeneratedPath = path.join(paths.imagesDir, 'img-444.png');
+    await fs.writeFile(tempGeneratedPath, Buffer.from('new-image'));
+    mockExecuteImageGeneration.mockResolvedValue({
+      success: true,
+      imagePath: tempGeneratedPath,
+    });
+
+    const result = await harness.runPhase(tmpDir, 'image_generate');
+    expect(result.status).toBe('completed');
+    expect(result.affectedShotIds).toContain('shot-001');
+
+    const firstCallArgs = mockExecuteImageGeneration.mock.calls[0]?.[0] as {
+      image_uris?: string[];
+      prompt?: string;
+    };
+    expect(firstCallArgs.image_uris ?? []).toHaveLength(0);
+    expect(firstCallArgs.prompt).toContain('参考资产设定：');
+    expect(firstCallArgs.prompt).toContain('角色清单：');
+    expect(firstCallArgs.prompt).toContain('露露：small squirrel in orange fur');
+    expect(firstCallArgs.prompt).toContain('cinematic shot of 露露');
   });
 });

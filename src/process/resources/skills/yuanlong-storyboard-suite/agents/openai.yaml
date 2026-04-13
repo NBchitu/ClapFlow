@@ -1,0 +1,4 @@
+interface:
+  display_name: "元龙分镜总控"
+  short_description: "将核心情节转为可导出的分镜与双提示词工作流"
+  default_prompt: "请按元龙方法读取核心情节与参数，输出可校验的分镜表，并导出每镜文生图+图生视频提示词。"

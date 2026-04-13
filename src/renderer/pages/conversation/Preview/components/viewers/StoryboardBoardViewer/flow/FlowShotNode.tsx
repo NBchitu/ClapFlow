@@ -5,53 +5,12 @@
  */
 
 import { Handle, Position, type NodeProps } from '@xyflow/react';
-import { Button, Image } from '@arco-design/web-react';
+import { Image } from '@arco-design/web-react';
 import React, { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { toPreviewImageSrc } from '../pathUtils';
 import type { FlowShotNode } from './types';
 import styles from './FlowShotNode.module.css';
-
-function getStatusColorClass(hasError: boolean, status: string): string {
-  if (hasError) return 'bg-red-6';
-  switch (status) {
-    case 'prompts-ready':
-      return 'bg-blue-6';
-    case 'image-generating':
-      return 'bg-indigo-6';
-    case 'image-generated':
-      return 'bg-green-6';
-    case 'image-approved':
-      return 'bg-cyan-6';
-    case 'video-generated':
-      return 'bg-purple-6';
-    case 'approved':
-      return 'bg-yellow-6';
-    default:
-      return 'bg-gray-6';
-  }
-}
-
-function getProgressPercent(status: string): number {
-  switch (status) {
-    case 'pending':
-      return 16;
-    case 'prompts-ready':
-      return 36;
-    case 'image-generating':
-      return 52;
-    case 'image-generated':
-      return 68;
-    case 'image-approved':
-      return 84;
-    case 'video-generated':
-      return 96;
-    case 'approved':
-      return 100;
-    default:
-      return 8;
-  }
-}
 
 function MechanicalSpinner({ size = 40 }: { size?: number }) {
   const notchLength = Math.round(size * 0.22);
@@ -84,11 +43,21 @@ const FlowShotNode: React.FC<NodeProps<FlowShotNode>> = ({ data, selected }) => 
   const shot = data.shot;
   const showImagePreview = data.showImagePreview !== false;
   const [pulseUpdate, setPulseUpdate] = useState(false);
+  const imageCacheKey = useMemo(
+    () => `${shot.imagePath ?? ''}|${shot.imageHistory?.[0] ?? ''}|${shot.imageHistory?.length ?? 0}`,
+    [shot.imageHistory, shot.imagePath]
+  );
   const shotChangeKey = useMemo(
     () =>
-      [shot.status, shot.imagePath ?? '', shot.imagePrompt ?? '', shot.videoPrompt ?? '', shot.locked ? '1' : '0'].join(
-        '|'
-      ),
+      [
+        shot.status,
+        shot.imagePath ?? '',
+        shot.imageHistory?.[0] ?? '',
+        shot.imageHistory?.length ?? 0,
+        shot.imagePrompt ?? '',
+        shot.videoPrompt ?? '',
+        shot.locked ? '1' : '0',
+      ].join('|'),
     [shot]
   );
   useEffect(() => {
@@ -96,160 +65,94 @@ const FlowShotNode: React.FC<NodeProps<FlowShotNode>> = ({ data, selected }) => 
     const timer = window.setTimeout(() => setPulseUpdate(false), 260);
     return () => window.clearTimeout(timer);
   }, [shotChangeKey]);
-  const hasError = shot.qaIssues?.some((issue) => issue.severity === 'error') ?? false;
-  const statusColorClass = getStatusColorClass(hasError, shot.status);
-  const progress = getProgressPercent(shot.status);
   const isGenerating = shot.status === 'image-generating';
-  const showProgressAnimation =
-    shot.status === 'pending' || shot.status === 'prompts-ready' || shot.status === 'image-generating';
-  const handleEdit = (event: Event) => {
-    event.stopPropagation();
-    data.onEditShot?.(shot.id);
-  };
-  const handleDelete = (event: Event) => {
-    event.stopPropagation();
-    data.onDeleteShot?.(shot.id);
-  };
-  const showContextActions = Boolean(data.onEditShot || data.onDeleteShot);
+  const referenceCount = shot.appliedReferenceCount ?? shot.assetRefs?.length ?? 0;
 
   return (
     <div
       className={[
         'group',
         styles.nodeContainer,
-        styles.hardShadow,
-        'relative w-252px rounded-10px border-2 overflow-hidden',
-        'bg-white transition-all duration-180',
+        'relative bg-white w-[320px] rounded-[12px] border border-gray-200 overflow-hidden flex flex-col cursor-pointer',
+        'transition-all duration-300 ease-[cubic-bezier(0.34,1.56,0.64,1)] shadow-sm hover:shadow-md hover:-translate-y-[4px]',
         pulseUpdate ? 'animate-pop' : '',
-        selected
-          ? 'border-[var(--color-lime-pop,#D9FF00)] scale-[1.012]'
-          : 'border-[var(--color-ink,#000)] hover:border-[var(--color-lime-pop,#D9FF00)]',
+        selected ? 'ring-2 ring-[#D9FF00]' : 'hover:ring-1 hover:ring-[#D9FF00]',
       ].join(' ')}
     >
-      <Handle
-        type='target'
-        position={Position.Left}
-        style={{ width: 10, height: 10, background: 'var(--color-violet-pop,#8B5CF6)', border: '2px solid #000' }}
-      />
-      <Handle
-        type='source'
-        position={Position.Right}
-        style={{ width: 10, height: 10, background: 'var(--color-violet-pop,#8B5CF6)', border: '2px solid #000' }}
-      />
+      <Handle type='target' position={Position.Left} style={{ width: 0, height: 0, opacity: 0 }} />
+      <Handle type='source' position={Position.Right} style={{ width: 0, height: 0, opacity: 0 }} />
 
-      {/* Title bar */}
-      <div
-        className={`h-30px px-8px flex items-center gap-6px border-b-2 border-[var(--color-ink,#000)] ${styles.titleStrip}`}
-      >
-        <span
-          className={`w-8px h-8px rounded-full border-2 border-white ${statusColorClass} ${showProgressAnimation ? 'animate-pulse' : ''}`}
-        />
-        <span className='w-18px h-18px rounded-full border-2 border-[var(--color-ink,#000)] bg-[var(--color-ink,#000)] text-white text-10px font-bold flex items-center justify-center shrink-0'>
-          {String(shot.shotIndex).padStart(2, '0')}
-        </span>
-        <span className='text-11px text-white font-bold truncate'>{shot.shotType}</span>
+      {/* Header */}
+      <div className='h-[32px] bg-[#F9F9F9] border-b border-gray-200 flex items-center justify-between px-[12px] shrink-0'>
+        <div className='flex items-center gap-[4px]'>
+          <div className='w-[6px] h-[6px] rounded-full bg-black/80' />
+          <div className='w-[6px] h-[6px] rounded-full bg-black/80' />
+          <div className='w-[6px] h-[6px] rounded-full bg-black/80' />
+        </div>
+        <div className='text-[10px] font-bold text-gray-500 tracking-[0.1em]'>
+          SHOT {String(shot.shotIndex).padStart(3, '0')}
+        </div>
+        <div className='flex items-center gap-[4px]'>
+          <div className='w-[6px] h-[6px] rounded-full bg-black/80' />
+          <div className='w-[6px] h-[6px] rounded-full bg-black/80' />
+          <div className='w-[6px] h-[6px] rounded-full bg-black/80' />
+        </div>
       </div>
 
-      {/* Preview */}
-      <div className='relative w-full h-126px bg-white flex items-center justify-center border-b-2 border-[var(--color-ink,#000)]'>
-        {shot.imagePath && showImagePreview ? (
-          <div className='w-full h-full' onClick={(event) => event.stopPropagation()}>
+      {/* Image Area */}
+      <div className='relative w-full h-[180px] bg-gray-100 shrink-0 overflow-hidden'>
+        <div className='absolute top-[8px] left-[8px] z-10 bg-black/80 px-[6px] py-[3px] rounded-[4px] flex items-center gap-[4px] pointer-events-none'>
+          <span className='text-[10px] leading-none mb-[1px]'>📸</span>
+          <span className='text-[9px] font-bold text-[#D9FF00] tracking-wider leading-none'>
+            {shot.shotType?.toUpperCase()}
+          </span>
+        </div>
+        {referenceCount > 0 ? (
+          <div className='absolute top-[8px] right-[8px] z-10 bg-white px-[6px] py-[3px] rounded-[4px] border border-black pointer-events-none'>
+            <span className='text-[9px] font-bold text-black tracking-wider leading-none'>REF {referenceCount}</span>
+          </div>
+        ) : null}
+
+        {isGenerating ? (
+          <div className='flex flex-col items-center justify-center bg-[#E5E7EB] w-full h-full z-10'>
+            <div className='mb-5'>
+              <MechanicalSpinner size={40} />
+            </div>
+            <div className='font-extrabold text-black text-[11px] tracking-[0.15em] opacity-80'>GENERATING...</div>
+            {referenceCount > 0 ? (
+              <div className='mt-1 text-[10px] font-bold text-black/80'>Applying {referenceCount} refs…</div>
+            ) : null}
+          </div>
+        ) : shot.imagePath && showImagePreview ? (
+          <div className='w-full h-full z-10' onClick={(event) => event.stopPropagation()}>
             <Image
-              src={toPreviewImageSrc(shot.imagePath)}
+              src={toPreviewImageSrc(shot.imagePath, imageCacheKey)}
               alt={shot.goal}
               preview
-              previewProps={{
-                actionsLayout: ['zoomIn', 'zoomOut', 'originalSize', 'rotateLeft', 'rotateRight'],
-              }}
               className='w-full h-full [&_.arco-image-img]:w-full [&_.arco-image-img]:h-full [&_.arco-image-img]:object-cover'
             />
           </div>
         ) : (
-          <div
-            className={[
-              styles.previewSkeleton,
-              'w-[92%] h-[84%] rounded-6px border-2 border-dashed border-[var(--color-ink,#000)] flex items-center justify-center',
-            ].join(' ')}
-          >
-            <div className='flex flex-col items-center gap-6px'>
-              <span className='w-28px h-28px rounded-full border-2 border-[var(--color-ink,#000)] bg-white flex items-center justify-center'>
-                <svg width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='currentColor' strokeWidth='2.2'>
-                  <path d='M3 7h4l2-2h6l2 2h4v12H3z' />
-                  <circle cx='12' cy='13' r='4' />
-                  <path d='M20 3v4M18 5h4' />
-                </svg>
-              </span>
-              <span className='text-10px text-[var(--color-ink,#000)] font-semibold'>
-                {t('video.storyboard.loading')}
-              </span>
+          <div className='flex flex-col items-center justify-center bg-[#E5E7EB] w-full h-full z-10'>
+            <div className='w-[48px] h-[48px] rounded-full border-2 border-black flex items-center justify-center bg-white mb-[8px] opacity-20'>
+              <svg width='20' height='20' viewBox='0 0 24 24' fill='none' stroke='black' strokeWidth='2.5'>
+                <path d='M3 7h4l2-2h6l2 2h4v12H3z' />
+                <circle cx='12' cy='13' r='4' />
+              </svg>
             </div>
-          </div>
-        )}
-        <span className='absolute left-8px bottom-8px text-10px px-8px py-3px rounded-999px bg-[var(--color-ink,#000)] text-[var(--color-pink-pop,#F472B6)] font-bold border-2 border-[var(--color-pink-pop,#F472B6)] shadow-[2px_2px_0_0_var(--color-ink,#000)]'>
-          {shot.shotType}
-        </span>
-
-        {isGenerating && (
-          <div className={styles.generationOverlay}>
-            <MechanicalSpinner size={40} />
+            <div className='font-bold text-black text-[11px] tracking-widest opacity-20'>
+              {t('video.storyboard.loading')}
+            </div>
           </div>
         )}
       </div>
 
-      {/* Params */}
-      <div className='px-8px pt-6px pb-6px flex flex-col gap-4px bg-[var(--color-card-surface,#fff)]'>
-        <div
-          className={[
-            styles.descriptionPanel,
-            'relative rounded-6px border border-[var(--color-ink,#000)]/20 pl-10px pr-10px pt-6px pb-6px min-h-44px bg-white',
-            shot.status === 'image-generating'
-              ? 'bg-[radial-gradient(circle_at_1px_1px,rgba(0,0,0,0.12)_1px,transparent_0)] bg-[length:8px_8px]'
-              : '',
-          ].join(' ')}
-        >
-          <span className={`${styles.descriptionBaseline} absolute left-4px top-6px bottom-6px w-2px rounded-full`} />
-          <p className='text-11px leading-16px text-[var(--color-ink,#000)] line-clamp-2 min-h-28px font-semibold'>
-            {shot.goal || '—'}
-          </p>
-          {showContextActions ? (
-            <div className='absolute right-6px bottom-5px flex items-center gap-4px'>
-              {data.onEditShot ? (
-                <Button
-                  size='mini'
-                  type='text'
-                  className='!h-20px !px-7px !rounded-6px !border !border-[var(--color-ink,#000)] !bg-white !text-[var(--color-ink,#000)] !text-10px !font-bold hover:!bg-[var(--color-lime-pop,#D9FF00)]'
-                  onClick={handleEdit}
-                >
-                  {t('common.edit')}
-                </Button>
-              ) : null}
-              {data.onDeleteShot ? (
-                <Button
-                  size='mini'
-                  type='text'
-                  className='!h-20px !px-7px !rounded-6px !border !border-[var(--color-ink,#000)] !bg-white !text-[var(--color-ink,#000)] !text-10px !font-bold hover:!bg-[var(--color-lime-pop,#D9FF00)]'
-                  onClick={handleDelete}
-                >
-                  {t('common.delete')}
-                </Button>
-              ) : null}
-            </div>
-          ) : null}
+      {/* Content Area */}
+      <div className='flex flex-col bg-white flex-1 p-[16px]'>
+        <div className='text-[13px] font-bold text-gray-900 leading-tight line-clamp-1'>{shot.goal || '—'}</div>
+        <div className='text-[11px] text-gray-500 mt-[6px] line-clamp-2 leading-relaxed'>
+          {shot.sceneDescription || shot.action || '—'}
         </div>
-      </div>
-
-      {/* Agent progress */}
-      <div className={`${styles.progressTrack} h-4px`}>
-        <div
-          className={[
-            styles.progressBarMoving,
-            showProgressAnimation ? styles.progressBarAnimated : '',
-            'h-full',
-            statusColorClass,
-            showProgressAnimation ? '' : 'opacity-75',
-          ].join(' ')}
-          style={{ width: `${progress}%` }}
-        />
       </div>
     </div>
   );

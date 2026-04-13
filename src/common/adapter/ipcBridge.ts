@@ -1295,10 +1295,15 @@ import type {
   ProjectMemory,
   CharacterAsset,
   SceneAsset,
+  PropAsset,
   GetAssetsResult,
   CreateAssetParams,
   UpdateAssetParams,
   DeleteAssetParams,
+  AddAssetReferenceImagesParams,
+  RemoveAssetReferenceImageParams,
+  SetPrimaryAssetReferenceImageParams,
+  GenerateAssetThreeViewReferenceParams,
   SnapshotInfo,
   ListSnapshotsParams,
   CreateSnapshotParams,
@@ -1315,11 +1320,32 @@ export const videoCreation = {
   getProjectMemory: bridge.buildProvider<ProjectMemory, { projectRoot: string }>('video.getProjectMemory'),
   // Asset CRUD
   getAssets: bridge.buildProvider<GetAssetsResult, { projectRoot: string }>('video.getAssets'),
-  createAsset: bridge.buildProvider<CharacterAsset | SceneAsset, CreateAssetParams>('video.createAsset'),
+  createAsset: bridge.buildProvider<CharacterAsset | SceneAsset | PropAsset, CreateAssetParams>('video.createAsset'),
   updateAsset: bridge.buildProvider<void, UpdateAssetParams>('video.updateAsset'),
   deleteAsset: bridge.buildProvider<void, DeleteAssetParams>('video.deleteAsset'),
+  addAssetReferenceImages: bridge.buildProvider<CharacterAsset | SceneAsset | PropAsset, AddAssetReferenceImagesParams>(
+    'video.addAssetReferenceImages'
+  ),
+  removeAssetReferenceImage: bridge.buildProvider<
+    CharacterAsset | SceneAsset | PropAsset,
+    RemoveAssetReferenceImageParams
+  >('video.removeAssetReferenceImage'),
+  setPrimaryAssetReferenceImage: bridge.buildProvider<
+    CharacterAsset | SceneAsset | PropAsset,
+    SetPrimaryAssetReferenceImageParams
+  >('video.setPrimaryAssetReferenceImage'),
+  generateAssetThreeViewReference: bridge.buildProvider<
+    CharacterAsset | SceneAsset | PropAsset,
+    GenerateAssetThreeViewReferenceParams
+  >('video.generateAssetThreeViewReference'),
   applyAssetToShots: bridge.buildProvider<void, { projectRoot: string; charId: string; shotIds: string[] }>(
     'video.applyAssetToShots'
+  ),
+  applyAssetsToShots: bridge.buildProvider<void, { projectRoot: string; assetIds: string[]; shotIds: string[] }>(
+    'video.applyAssetsToShots'
+  ),
+  removeAssetsFromShots: bridge.buildProvider<void, { projectRoot: string; assetIds: string[]; shotIds: string[] }>(
+    'video.removeAssetsFromShots'
   ),
   // Snapshot
   listSnapshots: bridge.buildProvider<SnapshotInfo[], ListSnapshotsParams>('video.listSnapshots'),

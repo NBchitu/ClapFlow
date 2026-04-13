@@ -63,7 +63,13 @@ export function deriveProjectRootFromShotPath(shotPath: string): string {
   return parts.join('/');
 }
 
-export function toPreviewImageSrc(imagePath?: string): string | undefined {
+function appendCacheBuster(url: string, cacheKey?: string | number): string {
+  if (cacheKey === undefined || cacheKey === null || cacheKey === '') return url;
+  const separator = url.includes('?') ? '&' : '?';
+  return `${url}${separator}v=${encodeURIComponent(String(cacheKey))}`;
+}
+
+export function toPreviewImageSrc(imagePath?: string, cacheKey?: string | number): string | undefined {
   if (!imagePath) return undefined;
   if (imagePath.startsWith('http://') || imagePath.startsWith('https://') || imagePath.startsWith('data:image/')) {
     return imagePath;
@@ -71,5 +77,7 @@ export function toPreviewImageSrc(imagePath?: string): string | undefined {
 
   const absPath = normalizeFsPath(imagePath);
   const assetUrl = `${ASSET_PROTOCOL_PREFIX}${encodeURIComponent(absPath)}`;
-  return resolveExtensionAssetUrl(assetUrl);
+  const resolved = resolveExtensionAssetUrl(assetUrl);
+  if (!resolved) return resolved;
+  return appendCacheBuster(resolved, cacheKey);
 }

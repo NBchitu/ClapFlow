@@ -41,28 +41,26 @@ vi.mock('@/common', () => ({
       updateShot: { invoke: vi.fn().mockResolvedValue({}) },
       generateShotImages: { invoke: vi.fn().mockResolvedValue({ succeeded: [], failed: [] }) },
       insertShot: {
-        invoke: vi
-          .fn()
-          .mockResolvedValue({
-            id: 'shot-new',
-            sceneIndex: 0,
-            shotIndex: 99,
-            goal: '',
-            sceneDescription: '',
-            characters: [],
-            action: '',
-            dialogue: '',
-            shotType: 'MS',
-            cameraMove: 'static',
-            imagePrompt: '',
-            videoPrompt: '',
-            lockedTokens: [],
-            continuityRefs: {},
-            assetRefs: [],
-            duration: 4,
-            status: 'pending',
-            locked: false,
-          }),
+        invoke: vi.fn().mockResolvedValue({
+          id: 'shot-new',
+          sceneIndex: 0,
+          shotIndex: 99,
+          goal: '',
+          sceneDescription: '',
+          characters: [],
+          action: '',
+          dialogue: '',
+          shotType: 'MS',
+          cameraMove: 'static',
+          imagePrompt: '',
+          videoPrompt: '',
+          lockedTokens: [],
+          continuityRefs: {},
+          assetRefs: [],
+          duration: 4,
+          status: 'pending',
+          locked: false,
+        }),
       },
       deleteShot: { invoke: vi.fn().mockResolvedValue(undefined) },
       reorderShots: { invoke: vi.fn().mockResolvedValue(undefined) },
@@ -73,6 +71,26 @@ vi.mock('@/common', () => ({
           .mockResolvedValue({ id: 'char-001', name: 'Test', description: '', appearance: '', lockedTokens: [] }),
       },
       applyAssetToShots: { invoke: vi.fn().mockResolvedValue(undefined) },
+      applyAssetsToShots: { invoke: vi.fn().mockResolvedValue(undefined) },
+      removeAssetsFromShots: { invoke: vi.fn().mockResolvedValue(undefined) },
+      addAssetReferenceImages: {
+        invoke: vi
+          .fn()
+          .mockResolvedValue({ id: 'char-001', name: 'Test', description: '', appearance: '', lockedTokens: [] }),
+      },
+      removeAssetReferenceImage: {
+        invoke: vi
+          .fn()
+          .mockResolvedValue({ id: 'char-001', name: 'Test', description: '', appearance: '', lockedTokens: [] }),
+      },
+      setPrimaryAssetReferenceImage: {
+        invoke: vi
+          .fn()
+          .mockResolvedValue({ id: 'char-001', name: 'Test', description: '', appearance: '', lockedTokens: [] }),
+      },
+    },
+    dialog: {
+      showOpen: { invoke: vi.fn().mockResolvedValue([]) },
     },
   },
 }));
@@ -395,7 +413,10 @@ describe('StoryboardBoardViewer', () => {
     );
 
     await waitFor(() => expect(mockFsReadFile).toHaveBeenCalledTimes(1));
-    fireEvent.click(screen.getByText('◎'));
+    const canvasTab = screen.queryByText('◎') ?? screen.queryByText('CANVAS');
+    if (canvasTab) {
+      fireEvent.click(canvasTab);
+    }
 
     await waitFor(() => {
       expect(screen.getByTestId('react-flow')).toBeInTheDocument();

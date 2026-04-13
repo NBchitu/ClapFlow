@@ -241,11 +241,24 @@ export class VideoCreationHarness {
     type SceneStoryboardOutput = Pick<SceneInfo, 'id' | 'name' | 'description' | 'timeOfDay' | 'location'> & {
       shots: Partial<Shot>[];
     };
+    type AssetBlueprint = {
+      id?: string;
+      name: string;
+      description?: string;
+      appearance?: string;
+      prompt?: string;
+      lockedTokens?: string[];
+    };
     type StoryboardDecomposeOutput =
       | Partial<Shot>[]
       | {
           scenes?: SceneStoryboardOutput[];
           shots?: Partial<Shot>[];
+          assets?: {
+            characters?: AssetBlueprint[];
+            scenes?: AssetBlueprint[];
+            props?: AssetBlueprint[];
+          };
         };
 
     const aiOutput = await callVideoAi<StoryboardDecomposeOutput>(
@@ -314,6 +327,64 @@ export class VideoCreationHarness {
       throw new Error('storyboard_decompose: no shots generated');
     }
 
+    const { assetService } = await import('@process/services/video/AssetService');
+    const { parseAssetMentions } = await import('@process/services/video/AssetReferenceResolver');
+
+    const outputAssets = Array.isArray(aiOutput)
+      ? undefined
+      : typeof aiOutput === 'object' && aiOutput !== null
+        ? aiOutput.assets
+        : undefined;
+
+    const createAssetSafe = async (
+      type: 'character' | 'scene' | 'prop',
+      data: AssetBlueprint,
+      defaultId?: string
+    ): Promise<void> => {
+      if (!data.name?.trim()) return;
+      try {
+        await assetService.createAsset(projectRoot, type, {
+          id: data.id || defaultId,
+          name: data.name,
+          description: data.description ?? '',
+          appearance: data.appearance ?? data.description ?? '',
+          prompt: data.prompt ?? data.description ?? data.appearance ?? '',
+          lockedTokens: data.lockedTokens ?? [],
+        });
+      } catch (err) {
+        console.warn(`[Harness] failed to create ${type} asset ${data.name}:`, err);
+      }
+    };
+
+    for (const scene of normalizedScenes) {
+      await createAssetSafe(
+        'scene',
+        {
+          id: scene.id,
+          name: scene.name,
+          description: scene.description,
+          prompt: scene.description,
+        },
+        scene.id
+      );
+    }
+    for (const char of outputAssets?.characters ?? []) {
+      await createAssetSafe('character', char);
+    }
+    for (const scene of outputAssets?.scenes ?? []) {
+      await createAssetSafe('scene', scene, scene.id);
+    }
+    for (const prop of outputAssets?.props ?? []) {
+      await createAssetSafe('prop', prop);
+    }
+    const allAssets = await assetService.getAssets(projectRoot);
+    const assetIdByName = new Map<string, string>();
+    const knownAssetIds = new Set<string>();
+    for (const asset of [...allAssets.characters, ...allAssets.scenes, ...allAssets.props]) {
+      assetIdByName.set(asset.name.trim().replace(/\s+/g, '_'), asset.id);
+      knownAssetIds.add(asset.id);
+    }
+
     await fs.mkdir(paths.shotsDir, { recursive: true });
 
     const writtenIds: string[] = [];
@@ -339,6 +410,18 @@ export class VideoCreationHarness {
       const sceneIndex = sceneIndexById.get(sceneId) ?? 0;
       const sceneShotIndex = (sceneShotCounter.get(sceneId) ?? 0) + 1;
       sceneShotCounter.set(sceneId, sceneShotIndex);
+      const referencedMentions = parseAssetMentions(
+        [raw.goal, raw.action, raw.dialogue, raw.sceneDescription].filter(Boolean).join('\n')
+      );
+      const explicitAssetRefs = Array.isArray(raw.assetRefs) ? raw.assetRefs : [];
+      const characterRefs = (raw.characters ?? []).map((name) => name.trim().replace(/\s+/g, '_'));
+      const resolvedAssetRefs = [...new Set([...explicitAssetRefs, ...characterRefs, ...referencedMentions])]
+        .map((ref) => assetIdByName.get(ref.trim().replace(/\s+/g, '_')) ?? ref)
+        .filter((ref) => knownAssetIds.has(ref));
+      if (knownAssetIds.has(sceneId)) {
+        resolvedAssetRefs.push(sceneId);
+      }
+      const assetRefs = [...new Set(resolvedAssetRefs)];
 
       const shot: Shot = {
         id,
@@ -357,7 +440,7 @@ export class VideoCreationHarness {
         videoPrompt: '',
         lockedTokens: [],
         continuityRefs: { sharedScene: sceneId },
-        assetRefs: [],
+        assetRefs,
         duration: raw.duration ?? 4,
         status: 'pending',
         locked: false,
@@ -467,6 +550,16 @@ export class VideoCreationHarness {
     const memory = await this.projectMemoryService.read(projectRoot);
     const memorySummary = this.projectMemoryService.buildContextSummary(memory);
     const skillContent = await loadVideoSkillContent('prompt');
+    const { assetService } = await import('@process/services/video/AssetService');
+    const { parseAssetMentions } = await import('@process/services/video/AssetReferenceResolver');
+    const assets = await assetService.getAssets(projectRoot);
+    const assetIdByName = new Map<string, string>();
+    const knownAssetIds = new Set<string>();
+    for (const asset of [...assets.characters, ...assets.scenes, ...assets.props]) {
+      const normalized = asset.name.trim().replace(/\s+/g, '_');
+      assetIdByName.set(normalized, asset.id);
+      knownAssetIds.add(asset.id);
+    }
 
     const userMsg = [`Memory Summary:\n${memorySummary}`, `Shots:\n${JSON.stringify(shots, null, 2)}`].join(
       '\n\n---\n\n'
@@ -477,6 +570,7 @@ export class VideoCreationHarness {
       imagePrompt: string;
       videoPrompt: string;
       lockedTokens: string[];
+      assetRefs?: string[];
     };
     const updates = await callVideoAi<PromptUpdate[]>(
       model,
@@ -493,11 +587,18 @@ export class VideoCreationHarness {
       if (!update.id || !update.imagePrompt) continue;
       const existing = shots.find((s) => s.id === update.id);
       if (!existing) continue;
+      const promptMentions = parseAssetMentions([update.imagePrompt, update.videoPrompt].filter(Boolean).join('\n'));
+      const explicitRefs = update.assetRefs ?? [];
+      const mappedRefs = [...new Set([...explicitRefs, ...promptMentions])]
+        .map((ref) => assetIdByName.get(ref.trim().replace(/\s+/g, '_')) ?? ref)
+        .filter((ref) => knownAssetIds.has(ref));
+      const mergedAssetRefs = [...new Set([...(existing.assetRefs ?? []), ...mappedRefs])];
       const updated: Shot = {
         ...existing,
         imagePrompt: update.imagePrompt,
         videoPrompt: update.videoPrompt ?? existing.videoPrompt,
         lockedTokens: update.lockedTokens ?? existing.lockedTokens,
+        assetRefs: mergedAssetRefs,
         status: 'prompts-ready',
       };
       await this.storyboardService.writeShot(projectRoot, updated);
@@ -511,10 +612,16 @@ export class VideoCreationHarness {
   // ─── Phase 5: Image Generate (T3.3) ──────────────────────────
 
   private async runImageGeneratePhase(projectRoot: string, shotIds: string[], allShots: Shot[]): Promise<string[]> {
-    const { executeImageGeneration, downloadAndSaveImage, saveGeneratedImage, isHttpUrl } = await import(
-      '@/common/chat/imageGenCore'
-    );
+    const { executeImageGeneration, downloadAndSaveImage, saveGeneratedImage, isHttpUrl } =
+      await import('@/common/chat/imageGenCore');
+    const {
+      buildPromptWithFallbackPrefix,
+      buildPromptWithReferencePrefix,
+      resolveShotReferences,
+      stripAssetMentionMarkers,
+    } = await import('@process/services/video/AssetReferenceResolver');
     const { ProcessConfig } = await import('@process/utils/initStorage');
+    const { assetService } = await import('@process/services/video/AssetService');
 
     const imgModelRaw = await ProcessConfig.get('tools.imageGenerationModel');
     const imgCfg = imgModelRaw as {
@@ -535,6 +642,14 @@ export class VideoCreationHarness {
     const targets = allShots.filter(
       (s) => shotIds.includes(s.id) && !s.locked && s.status === 'prompts-ready' && s.imagePrompt
     );
+    const assets = await assetService.getAssets(projectRoot);
+    const assetMetaById = new Map(
+      [
+        ...assets.characters.map((asset) => ({ id: asset.id, type: 'character' as const, name: asset.name })),
+        ...assets.scenes.map((asset) => ({ id: asset.id, type: 'scene' as const, name: asset.name })),
+        ...assets.props.map((asset) => ({ id: asset.id, type: 'prop' as const, name: asset.name })),
+      ].map((asset) => [asset.id, asset])
+    );
 
     const IMAGE_CONCURRENCY = 3;
     const succeeded: string[] = [];
@@ -554,16 +669,97 @@ export class VideoCreationHarness {
       const batch = targets.slice(i, i + IMAGE_CONCURRENCY);
       await Promise.all(
         batch.map(async (shot) => {
-          const generatingShot: Shot = { ...shot, status: 'image-generating' };
+          const referenceResolution = await resolveShotReferences(projectRoot, shot, assets);
+          if (referenceResolution.warnings.length > 0) {
+            console.warn(`[Harness] reference warnings for ${shot.id}:`, referenceResolution.warnings.join('; '));
+          }
+          const generatingShot: Shot = {
+            ...shot,
+            status: 'image-generating',
+            appliedReferenceCount: referenceResolution.imageUris.length,
+            resolvedAssetRefs: referenceResolution.resolvedAssetIds,
+          };
           await this.storyboardService.writeShot(projectRoot, generatingShot);
           this.emitStream({ type: 'shot-updated', shotId: shot.id, shot: generatingShot });
 
           try {
-            const result = await executeImageGeneration(
-              { prompt: generatingShot.imagePrompt },
+            const modelPrompt = stripAssetMentionMarkers(generatingShot.imagePrompt);
+            const fallbackPrompt = buildPromptWithFallbackPrefix(referenceResolution.fallbackPromptPrefix, modelPrompt);
+            const referencePrompt = buildPromptWithReferencePrefix(
+              referenceResolution.referencePromptPrefix,
+              modelPrompt
+            );
+            const requestPrompt =
+              referenceResolution.imageUris.length === 0 && referenceResolution.fallbackPromptPrefix
+                ? fallbackPrompt
+                : referenceResolution.imageUris.length > 0
+                  ? referencePrompt
+                  : modelPrompt;
+            const transportPrompt =
+              referenceResolution.imageUris.length > 0
+                ? `Analyze/Edit image: ${requestPrompt}`
+                : `Generate image: ${requestPrompt}`;
+            const resolvedAssets = referenceResolution.resolvedAssetIds
+              .map((id) => assetMetaById.get(id))
+              .filter((asset): asset is NonNullable<typeof asset> => Boolean(asset));
+            await this.appendImageGenerateDebugLog(projectRoot, {
+              timestamp: new Date().toISOString(),
+              stage: 'primary-request',
+              shotId: shot.id,
+              resolvedAssets,
+              imageUris: referenceResolution.imageUris,
+              prompt: requestPrompt,
+              transportPrompt,
+              rawPrompt: generatingShot.imagePrompt,
+              modelPrompt,
+              referencePrompt,
+              fallbackPrompt,
+            });
+            console.info(`[Harness][image_generate][${shot.id}] prompt(raw):\n${generatingShot.imagePrompt}`);
+            console.info(`[Harness][image_generate][${shot.id}] prompt(model):\n${modelPrompt}`);
+            if (requestPrompt !== modelPrompt) {
+              console.info(`[Harness][image_generate][${shot.id}] prompt(with-asset-context):\n${requestPrompt}`);
+            }
+            console.info(`[Harness][image_generate][${shot.id}] prompt(sent-to-image-model):\n${transportPrompt}`);
+            if (referenceResolution.imageUris.length > 0) {
+              console.info(
+                `[Harness][image_generate][${shot.id}] image_uris(${referenceResolution.imageUris.length}):`,
+                referenceResolution.imageUris
+              );
+            }
+            const primaryResult = await executeImageGeneration(
+              {
+                prompt: requestPrompt,
+                image_uris: referenceResolution.imageUris,
+              },
               imgProvider,
               paths.imagesDir
             );
+            const shouldFallback =
+              !primaryResult.success &&
+              referenceResolution.imageUris.length > 0 &&
+              this.shouldRetryWithoutReferenceImages(primaryResult.error ?? primaryResult.text);
+
+            if (shouldFallback) {
+              await this.appendImageGenerateDebugLog(projectRoot, {
+                timestamp: new Date().toISOString(),
+                stage: 'fallback-request',
+                shotId: shot.id,
+                reason: primaryResult.error ?? primaryResult.text ?? 'unknown',
+                prompt: fallbackPrompt,
+              });
+              console.info(`[Harness][image_generate][${shot.id}] fallback prompt:\n${fallbackPrompt}`);
+            }
+
+            const result = shouldFallback
+              ? await executeImageGeneration(
+                  {
+                    prompt: fallbackPrompt,
+                  },
+                  imgProvider,
+                  paths.imagesDir
+                )
+              : primaryResult;
             if (result.success && result.imagePath) {
               let generatedLocalPath = result.imagePath;
               if (isHttpUrl(generatedLocalPath)) {
@@ -589,10 +785,35 @@ export class VideoCreationHarness {
               await this.storyboardService.writeShot(projectRoot, updated);
               this.emitStream({ type: 'shot-image-ready', shotId: shot.id, imagePath });
               this.emitStream({ type: 'shot-updated', shotId: shot.id, shot: updated });
+              await this.appendImageGenerateDebugLog(projectRoot, {
+                timestamp: new Date().toISOString(),
+                stage: 'completed',
+                shotId: shot.id,
+                success: true,
+                usedFallback: shouldFallback,
+                outputImagePath: imagePath,
+              });
               succeeded.push(shot.id);
+            } else {
+              await this.appendImageGenerateDebugLog(projectRoot, {
+                timestamp: new Date().toISOString(),
+                stage: 'completed',
+                shotId: shot.id,
+                success: false,
+                usedFallback: shouldFallback,
+                error: result.error ?? result.text ?? 'unknown',
+              });
             }
           } catch (err) {
             console.error(`[Harness] image_generate failed for ${shot.id}:`, err);
+            await this.appendImageGenerateDebugLog(projectRoot, {
+              timestamp: new Date().toISOString(),
+              stage: 'completed',
+              shotId: shot.id,
+              success: false,
+              usedFallback: false,
+              error: err instanceof Error ? err.message : String(err),
+            });
             const rollbackShot: Shot = { ...generatingShot, status: 'prompts-ready' };
             await this.storyboardService.writeShot(projectRoot, rollbackShot);
             this.emitStream({ type: 'shot-updated', shotId: shot.id, shot: rollbackShot });
@@ -639,6 +860,27 @@ export class VideoCreationHarness {
       );
     } catch {
       // best-effort cleanup only
+    }
+  }
+
+  private shouldRetryWithoutReferenceImages(errorText: string): boolean {
+    if (!errorText) return false;
+    const text = errorText.toLowerCase();
+    return (
+      text.includes('image') &&
+      (text.includes('unsupported') || text.includes('not support') || text.includes('invalid content'))
+    );
+  }
+
+  private async appendImageGenerateDebugLog(projectRoot: string, payload: Record<string, unknown>): Promise<void> {
+    try {
+      const paths = getProjectPaths(projectRoot);
+      await fs.mkdir(paths.harnessRunsDir, { recursive: true });
+      const day = new Date().toISOString().slice(0, 10);
+      const debugFilePath = nodePath.join(paths.harnessRunsDir, `image-generate-debug-${day}.jsonl`);
+      await fs.appendFile(debugFilePath, `${JSON.stringify(payload)}\n`, 'utf-8');
+    } catch (err) {
+      console.warn('[Harness] Failed to append image prompt debug log:', err);
     }
   }
 

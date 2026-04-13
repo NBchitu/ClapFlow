@@ -15,7 +15,8 @@ Then wait for user input.
 
 ## When the user provides a script
 
-Follow the `video-creation-suite` skill step by step.
+Follow the `cinematic-video-creation-suite` skill step by step.
+If a needed sub-step is missing there, fall back to `video-creation-suite`.
 
 Key rules:
 1. **Create the project by writing files** — follow the exact directory structure and JSON schemas in the skill.

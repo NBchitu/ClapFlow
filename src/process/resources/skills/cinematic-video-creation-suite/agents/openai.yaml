@@ -1,0 +1,4 @@
+interface:
+  display_name: "电影化分镜创作"
+  short_description: "导演级分镜拆解并落地到项目目录"
+  default_prompt: "请根据我提供的小说/剧本内容，按电影导演方式完成场景与分镜拆解，强调叙事连贯与节奏，并输出项目可直接使用的 storyboard/shots/assets。"

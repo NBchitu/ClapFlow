@@ -1,0 +1,118 @@
+{
+  "meta": {
+    "schema_version": "yuanlong.storyboard.v1",
+    "generated_at": "2026-04-04T22:30:00+08:00",
+    "language": "zh-CN"
+  },
+  "input": {
+    "core_plot": "主角在雨夜追踪线索，最终在天台与对手对峙。",
+    "duration_sec": 4,
+    "mode": {
+      "chain": false,
+      "stc_enabled": true,
+      "faithful_mode": false,
+      "script_imported": false
+    },
+    "shot_count": {
+      "mode": "auto",
+      "target": 1
+    },
+    "audio": {
+      "bgm_enabled": true,
+      "subtitle_enabled": false
+    },
+    "safety": {
+      "word_filter_enabled": true,
+      "auto_safety_enabled": true
+    }
+  },
+  "selected_configuration": {
+    "director": {
+      "id": "fincher",
+      "name": "大卫·芬奇",
+      "tag_category": "thriller"
+    },
+    "visual_style": {
+      "value": "noir",
+      "name": "黑色电影",
+      "tag_category": "realism"
+    },
+    "camera_languages": [
+      {
+        "value": "tracking",
+        "name": "跟踪镜头",
+        "tag_category": "camera-tech",
+        "prompt": "跟踪镜头"
+      }
+    ],
+    "lighting_moods": [
+      {
+        "value": "rainy",
+        "name": "雨夜湿润",
+        "tag_category": "lighting-tech",
+        "prompt": "雨夜湿润"
+      }
+    ]
+  },
+  "global_rules": {
+    "dialogue_lock": [],
+    "asset_tag_mode": {
+      "character": true,
+      "image": true,
+      "props": true
+    },
+    "consistency_rules": [
+      "景别跳跃<=2级",
+      "连续镜头维持角色朝向一致"
+    ]
+  },
+  "shots": [
+    {
+      "shot_id": 1,
+      "scene_id": 1,
+      "time": {
+        "start_sec": 0,
+        "end_sec": 4,
+        "duration_sec": 4,
+        "range": "0s-4s"
+      },
+      "content": {
+        "shot_size": "中景",
+        "camera_movement": "跟拍",
+        "frame_description": "主角在雨巷急行，回头确认身后动静。",
+        "lighting_mood": "雨夜湿润",
+        "drama_tension": "[+][情绪：从警觉→紧张] [冲突：不明跟踪]"
+      },
+      "prompts": {
+        "text_to_image": "主体：@人物1（警觉）[朝向：面朝前方楼梯] 正在 雨中急行后猛然回头，呼吸急促、指尖收紧（与上镜衔接：开篇情绪奠基） 空间：前景-雨滴掠过镜头与湿玻璃反光 中景-@人物1踩过积水 背景-@图片1[狭窄楼梯口与闪烁路灯] 光影：右后方逆光45°，色温4200K，明暗比3:1，雨雾中形成冷暖交界 镜头：中景，跟拍向前后轻微横移，三分法构图，低机位35mm，结尾动势：角色向右前方出画 音效：环境层-持续雨声与远处车流 动作层-脚步踩水与衣料摩擦 情绪层-低频弦乐缓慢抬升",
+        "image_to_video": "保持@人物1服装与体态一致，镜头沿角色前进方向跟拍并在回头瞬间轻微横移，速度由匀速转为短促加速再急停；延续上一镜出画方向，雨滴方向与风向稳定，地面反光与路灯闪烁强度连续，结尾保留向右前方出画的衔接姿态。"
+      },
+      "dialogue": [],
+      "assets": {
+        "tags": [
+          "@人物1",
+          "@图片1"
+        ],
+        "characters": [
+          "@人物1"
+        ],
+        "scenes": [
+          "@图片1"
+        ],
+        "props": []
+      },
+      "continuity": {
+        "in": "开场建立",
+        "out": "向右前方冲出画面"
+      }
+    }
+  ],
+  "validation": {
+    "shot_count_expected": 1,
+    "shot_count_actual": 1,
+    "duration_total_sec": 4,
+    "duration_target_sec": 4,
+    "passed": true,
+    "issues": []
+  }
+}

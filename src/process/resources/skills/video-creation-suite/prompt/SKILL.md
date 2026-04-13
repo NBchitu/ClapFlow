@@ -21,6 +21,7 @@ Required elements:
   - `CU` → `close up, face shot`
   - `ECU` → `extreme close up, macro`
 - **Character tokens**: inject `lockedTokens` exactly as provided
+- **Asset references**: use readable `@AssetName` markers for involved character/scene/prop (Chinese names allowed)
 - **Action**: present participle form ("standing", "running", "looking at")
 - **Environment**: scene location, time of day, weather
 - **Lighting**: lighting setup (e.g., "golden hour lighting", "neon lights", "overcast soft light")
@@ -66,7 +67,7 @@ Include ALL locked tokens in every shot that features the character.
 
 ## Output Format
 
-Return the full shot list with `imagePrompt`, `videoPrompt`, and `lockedTokens` filled in. Status should be updated to `prompts-ready`.
+Return the full shot list with `imagePrompt`, `videoPrompt`, `lockedTokens`, and `assetRefs` filled in. Status should be updated to `prompts-ready`.
 If input is grouped by scene, preserve each shot's `sceneId` and ordering.
 
 ## Rules
@@ -77,3 +78,4 @@ If input is grouped by scene, preserve each shot's `sceneId` and ordering.
 - Keep imagePrompt under 150 words
 - Keep videoPrompt under 60 words
 - Keep scene continuity: adjacent shots in the same `sceneId` should share stable environment/style tokens
+- Asset names must not contain spaces; use `_` when needed

@@ -5,19 +5,11 @@
  */
 
 import { ipcBridge } from '@/common';
-import type { QAIssue, Shot } from '@/common/types/videoCreation';
-import { Button, Image, Select, Slider, Tag } from '@arco-design/web-react';
-import React, { useCallback, useEffect, useRef, useState } from 'react';
+import type { GetAssetsResult, Shot } from '@/common/types/videoCreation';
+import { Button, Drawer, Image, Slider } from '@arco-design/web-react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { toPreviewImageSrc } from './pathUtils';
-
-const SHOT_TYPE_OPTIONS = [
-  { label: 'EWS — Extreme Wide', value: 'EWS' },
-  { label: 'WS — Wide Shot', value: 'WS' },
-  { label: 'MS — Medium Shot', value: 'MS' },
-  { label: 'CU — Close Up', value: 'CU' },
-  { label: 'ECU — Extreme Close Up', value: 'ECU' },
-];
 
 const CAMERA_MOVE_OPTIONS = [
   { label: 'Static', value: 'static' },
@@ -55,29 +47,65 @@ function MechanicalSpinner({ size = 40 }: { size?: number }) {
 }
 
 interface ShotDetailPanelProps {
-  shot: Shot;
+  shot?: Shot | null;
+  visible?: boolean;
   projectRoot: string;
   onClose?: () => void;
   mode?: 'sidebar' | 'full';
 }
 
-const ShotDetailPanel: React.FC<ShotDetailPanelProps> = ({ shot, projectRoot, onClose, mode = 'sidebar' }) => {
+const ShotDetailPanel: React.FC<ShotDetailPanelProps> = ({
+  shot,
+  visible = true,
+  projectRoot,
+  onClose,
+  mode = 'sidebar',
+}) => {
   const { t } = useTranslation();
-  const [local, setLocal] = useState<Shot>(shot);
+  const [local, setLocal] = useState<Shot | null>(shot || null);
   const [saving, setSaving] = useState(false);
-  const [isRegenerating, setIsRegenerating] = useState(shot.status === 'image-generating');
-  const [regenProgress, setRegenProgress] = useState(shot.status === 'image-generating' ? 8 : 0);
-  const [promptsExpanded, setPromptsExpanded] = useState(false);
+  const [isRegenerating, setIsRegenerating] = useState(false);
+  const [regenProgress, setRegenProgress] = useState(0);
+  const [assets, setAssets] = useState<GetAssetsResult>({ characters: [], scenes: [], props: [] });
   const imagePromptRef = useRef<HTMLTextAreaElement>(null);
   const videoPromptRef = useRef<HTMLTextAreaElement>(null);
   const regenTickRef = useRef<number | null>(null);
 
   useEffect(() => {
-    setLocal(shot);
+    if (shot) {
+      setLocal(shot);
+      setIsRegenerating(shot.status === 'image-generating');
+      setRegenProgress(shot.status === 'image-generating' ? 8 : 0);
+    }
   }, [shot]);
 
+  const loadAssets = useCallback(async () => {
+    if (!projectRoot) return;
+    try {
+      const nextAssets = await ipcBridge.videoCreation.getAssets.invoke({ projectRoot });
+      setAssets(nextAssets);
+    } catch {
+      // Ignore asset loading errors in panel
+    }
+  }, [projectRoot]);
+
   useEffect(() => {
-    if (shot.status === 'image-generating') {
+    if (!visible) return;
+    void loadAssets();
+  }, [loadAssets, visible]);
+
+  useEffect(() => {
+    const onAssetsUpdated = () => {
+      if (!visible) return;
+      void loadAssets();
+    };
+    window.addEventListener('storyboard-assets-updated', onAssetsUpdated);
+    return () => window.removeEventListener('storyboard-assets-updated', onAssetsUpdated);
+  }, [loadAssets, visible]);
+
+  useEffect(() => {
+    if (!local) return;
+    if (local.status === 'image-generating') {
       setIsRegenerating(true);
       setRegenProgress((prev) => (prev > 0 ? prev : 8));
       return;
@@ -91,7 +119,7 @@ const ShotDetailPanel: React.FC<ShotDetailPanelProps> = ({ shot, projectRoot, on
       }, 520);
       return () => window.clearTimeout(finishTimer);
     }
-  }, [shot.status, isRegenerating]);
+  }, [local?.status, isRegenerating]);
 
   useEffect(() => {
     if (!isRegenerating) {
@@ -116,24 +144,25 @@ const ShotDetailPanel: React.FC<ShotDetailPanelProps> = ({ shot, projectRoot, on
 
   const save = useCallback(
     async (updates: Partial<Shot>) => {
-      if (saving) return;
+      if (saving || !local) return;
       setSaving(true);
       try {
-        await ipcBridge.videoCreation.updateShot.invoke({ projectRoot, shotId: shot.id, updates });
+        await ipcBridge.videoCreation.updateShot.invoke({ projectRoot, shotId: local.id, updates });
       } finally {
         setSaving(false);
       }
     },
-    [projectRoot, shot.id, saving]
+    [projectRoot, local?.id, saving]
   );
 
   const handleFieldBlur = useCallback(
     (field: keyof Shot, value: unknown) => {
-      if (value !== shot[field]) {
+      if (!local) return;
+      if (value !== local[field]) {
         void save({ [field]: value } as Partial<Shot>);
       }
     },
-    [save, shot]
+    [save, local]
   );
 
   const handlePromptKeyDown = useCallback(
@@ -147,333 +176,456 @@ const ShotDetailPanel: React.FC<ShotDetailPanelProps> = ({ shot, projectRoot, on
     [save]
   );
 
-  const handleRemoveToken = useCallback(
-    (token: string) => {
-      const updated = local.lockedTokens.filter((t) => t !== token);
-      setLocal((prev) => ({ ...prev, lockedTokens: updated }));
-      void save({ lockedTokens: updated });
-    },
-    [local.lockedTokens, save]
-  );
-
   const handleToggleLock = useCallback(() => {
-    void save({ locked: !shot.locked });
-  }, [save, shot.locked]);
+    if (!local) return;
+    setLocal((prev) => (prev ? { ...prev, locked: !prev.locked } : prev));
+    void save({ locked: !local.locked });
+  }, [save, local]);
 
   const handleRegenerate = useCallback(() => {
+    if (!local) return;
     setIsRegenerating(true);
     setRegenProgress(8);
-    setLocal((prev) => ({ ...prev, status: 'image-generating' }));
+    setLocal((prev) => (prev ? { ...prev, status: 'image-generating' } : prev));
     void (async () => {
       try {
         await ipcBridge.videoCreation.updateShot.invoke({
           projectRoot,
-          shotId: shot.id,
+          shotId: local.id,
           updates: { status: 'prompts-ready' },
         });
         await ipcBridge.videoCreation.generateShotImages.invoke({
           projectRoot,
-          shotIds: [shot.id],
+          shotIds: [local.id],
         });
       } catch {
         setIsRegenerating(false);
         setRegenProgress(0);
       }
     })();
-  }, [projectRoot, shot.id]);
+  }, [projectRoot, local]);
 
-  const handleFixAndRegenerate = useCallback(
-    (issue: QAIssue) => {
-      const suggestion = issue.suggestion ?? '';
-      const newPrompt = local.imagePrompt ? `${local.imagePrompt}, ${suggestion}` : suggestion;
-      void save({ imagePrompt: newPrompt, status: 'prompts-ready' });
+  const showGeneratingSpin = isRegenerating || local?.status === 'image-generating';
+  const isSidebarMode = mode === 'sidebar';
+  const allAssets = useMemo(
+    () => [...assets.characters, ...assets.scenes, ...assets.props],
+    [assets.characters, assets.props, assets.scenes]
+  );
+  const boundAssetIds = useMemo(() => new Set(local?.assetRefs ?? []), [local?.assetRefs]);
+  const boundAssets = useMemo(
+    () => allAssets.filter((asset) => boundAssetIds.has(asset.id)),
+    [allAssets, boundAssetIds]
+  );
+  const unboundAssets = useMemo(
+    () => allAssets.filter((asset) => !boundAssetIds.has(asset.id)),
+    [allAssets, boundAssetIds]
+  );
+  const appliedReferenceCount = local?.appliedReferenceCount ?? local?.assetRefs?.length ?? 0;
+  const shotImageCacheKey = `${local?.imagePath ?? ''}|${local?.imageHistory?.[0] ?? ''}|${local?.imageHistory?.length ?? 0}`;
+
+  const bindAssetToShot = useCallback(
+    async (assetId: string) => {
+      if (!local) return;
+      try {
+        await ipcBridge.videoCreation.applyAssetsToShots.invoke({
+          projectRoot,
+          assetIds: [assetId],
+          shotIds: [local.id],
+        });
+        const nextRefs = [...new Set([...(local.assetRefs ?? []), assetId])];
+        setLocal((prev) => (prev ? { ...prev, assetRefs: nextRefs } : prev));
+      } catch {
+        // noop
+      }
     },
-    [local.imagePrompt, save]
+    [local, projectRoot]
   );
 
-  const severityColor = (severity: QAIssue['severity']) => (severity === 'error' ? 'text-red-500' : 'text-yellow-500');
-  const showGeneratingSpin = isRegenerating || local.status === 'image-generating';
-  const isSidebarMode = mode === 'sidebar';
+  const unbindAssetFromShot = useCallback(
+    async (assetId: string) => {
+      if (!local) return;
+      try {
+        await ipcBridge.videoCreation.removeAssetsFromShots.invoke({
+          projectRoot,
+          assetIds: [assetId],
+          shotIds: [local.id],
+        });
+        const nextRefs = (local.assetRefs ?? []).filter((id) => id !== assetId);
+        setLocal((prev) => (prev ? { ...prev, assetRefs: nextRefs } : prev));
+      } catch {
+        // noop
+      }
+    },
+    [local, projectRoot]
+  );
 
-  const panelRootClass = isSidebarMode
-    ? 'flex h-full w-[420px] flex-col overflow-hidden border-l-2 border-[var(--color-ink,#000)] bg-[#F2F2F2] shadow-[4px_0_0_0_var(--color-ink,#000)]'
-    : 'flex h-full w-full flex-col overflow-hidden bg-[var(--color-paper,#FFFDF5)]';
-  const headerClass = isSidebarMode
-    ? 'flex shrink-0 items-center justify-between border-b-2 border-[var(--color-ink,#000)] bg-[var(--color-ink,#000)] px-3 py-2'
-    : 'flex shrink-0 items-center justify-between border-b-2 border-[var(--color-ink,#000)] bg-white px-4 py-3';
-  const mediaBlockClass = isSidebarMode
-    ? 'shrink-0 space-y-2 border-b-2 border-[var(--color-ink,#000)] bg-[#F7F7F7] p-3'
-    : 'shrink-0 space-y-3 border-b-2 border-[var(--color-ink,#000)] bg-white p-4';
-  const formScrollClass = isSidebarMode
-    ? 'flex-1 min-h-0 space-y-3 overflow-y-auto p-3'
-    : 'flex-1 min-h-0 space-y-4 overflow-y-auto p-4';
-  const sectionCardClass = 'space-y-2 border-2 border-[var(--color-ink,#000)] bg-white p-3';
-  const rowLabelClass = 'pt-1 text-xs font-bold text-[var(--color-ink,#000)]';
-  const rowClass = 'grid grid-cols-[68px_1fr] items-start gap-2';
-  const inputClass =
-    'w-full resize-none border-0 border-b-2 border-[var(--color-ink,#000)] bg-transparent px-0 py-1.5 text-sm text-[var(--color-ink,#000)] focus:border-[var(--color-lime-pop,#D9FF00)] focus:outline-none';
-  const selectClass =
-    '[&_.arco-select-view]:!h-8 [&_.arco-select-view]:!rounded-none [&_.arco-select-view]:!border-2 [&_.arco-select-view]:!border-[var(--color-ink,#000)] [&_.arco-select-view]:!bg-white';
+  if (!local) return null;
 
-  return (
-    <div className={panelRootClass}>
-      <div className={headerClass}>
-        <span
-          className={
-            isSidebarMode
-              ? 'text-xs font-bold text-[var(--color-lime-pop,#D9FF00)] text-balance'
-              : 'text-13px font-semibold text-[var(--color-ink,#000)] text-balance'
-          }
-        >
-          {t('video.storyboard.detail.title')} · {t('video.storyboard.shot')} {local.shotIndex} / {local.shotType}
-        </span>
+  const content = (
+    <div className='flex flex-col h-full bg-[#FAFAFA] text-black overflow-y-auto overflow-x-hidden p-[24px]'>
+      <div className='flex items-start justify-between mb-[24px] shrink-0'>
+        <div>
+          <div className='text-[10px] font-bold tracking-[0.2em] text-gray-500 uppercase mb-[4px]'>SHOT DETAILS</div>
+          <div className='text-[24px] font-extrabold text-[#111] leading-tight'>
+            Shot {String(local.shotIndex).padStart(3, '0')}
+          </div>
+        </div>
         {isSidebarMode && onClose && (
-          <Button
-            type='text'
-            size='mini'
-            className='!h-6 !w-6 !min-w-6 !px-0 !text-[var(--color-lime-pop,#D9FF00)] hover:!bg-transparent hover:!opacity-80'
+          <button
             onClick={onClose}
-            aria-label={t('video.storyboard.detail.close')}
+            className='p-1 hover:bg-gray-200 transition-colors rounded-lg text-gray-500 hover:text-black mt-[4px]'
           >
-            ✕
-          </Button>
+            <svg
+              width='20'
+              height='20'
+              viewBox='0 0 24 24'
+              fill='none'
+              stroke='currentColor'
+              strokeWidth='2.5'
+              strokeLinecap='round'
+              strokeLinejoin='round'
+            >
+              <line x1='18' y1='6' x2='6' y2='18'></line>
+              <line x1='6' y1='6' x2='18' y2='18'></line>
+            </svg>
+          </button>
         )}
       </div>
 
-      <div className={mediaBlockClass}>
-        <div className='relative flex aspect-video w-full items-center justify-center overflow-hidden border-2 border-[var(--color-ink,#000)] bg-white'>
-          {local.imagePath ? (
-            <div className='h-full w-full'>
-              <Image
-                src={toPreviewImageSrc(local.imagePath)}
-                alt={local.goal}
-                preview
-                previewProps={{
-                  actionsLayout: ['zoomIn', 'zoomOut', 'originalSize', 'rotateLeft', 'rotateRight'],
-                }}
-                className='h-full w-full [&_.arco-image-img]:h-full [&_.arco-image-img]:w-full [&_.arco-image-img]:object-cover'
-              />
-            </div>
-          ) : (
-            <span className='text-11px text-t-tertiary'>{t('video.storyboard.detail.noImage')}</span>
-          )}
-
-          {showGeneratingSpin && (
-            <div className='absolute inset-0 flex items-center justify-center bg-[rgba(255,253,245,0.78)] pointer-events-none'>
-              <MechanicalSpinner size={40} />
-            </div>
-          )}
-        </div>
-
-        <div className='flex items-center gap-2'>
-          <Button
-            size='small'
-            type={local.locked ? 'primary' : 'secondary'}
-            onClick={handleToggleLock}
-            loading={saving}
-            aria-label={local.locked ? t('video.storyboard.detail.unlock') : t('video.storyboard.detail.lock')}
-            className='!h-8 !w-8 !min-w-8 !rounded-none !border-2 !border-[var(--color-ink,#000)] !px-0 !shadow-sm'
-          >
-            {local.locked ? '🔒' : '🔓'}
-          </Button>
-          <Button
-            size='small'
-            type='primary'
-            onClick={handleRegenerate}
-            loading={showGeneratingSpin}
-            disabled={!local.imagePrompt || isRegenerating}
-            className='!h-8 flex-1 !rounded-none !border-2 !border-[var(--color-ink,#000)] !bg-[var(--color-lime-pop,#D9FF00)] !font-extrabold !text-[var(--color-ink,#000)] !shadow-sm'
-          >
-            {t('video.storyboard.detail.regenerate')}
-          </Button>
-        </div>
+      <div className='relative w-full aspect-[16/9] rounded-[16px] border border-black overflow-hidden bg-black mb-[24px] shrink-0'>
+        {local.imagePath ? (
+          <div className='w-full h-full'>
+            <Image
+              src={toPreviewImageSrc(local.imagePath, shotImageCacheKey)}
+              alt={local.goal}
+              preview
+              previewProps={{
+                actionsLayout: ['zoomIn', 'zoomOut', 'originalSize', 'rotateLeft', 'rotateRight'],
+              }}
+              className='w-full h-full [&_.arco-image-img]:w-full [&_.arco-image-img]:h-full [&_.arco-image-img]:object-cover'
+            />
+          </div>
+        ) : (
+          <div className='flex items-center justify-center w-full h-full'>
+            <span className='text-[11px] text-gray-500 tracking-[0.1em] font-bold'>
+              {t('video.storyboard.detail.noImage')}
+            </span>
+          </div>
+        )}
 
         {showGeneratingSpin && (
-          <div>
-            <div className='h-1.5 w-full overflow-hidden border border-[var(--color-ink,#000)] bg-white'>
+          <div className='absolute inset-0 flex flex-col items-center justify-center bg-black/60 pointer-events-none backdrop-blur-sm z-10'>
+            <MechanicalSpinner size={40} />
+            <div className='mt-[16px] w-[60%] h-[4px] bg-gray-800 rounded-full overflow-hidden'>
               <div
-                className='h-full bg-[var(--color-lime-pop,#D9FF00)] transition-all duration-200'
+                className='h-full bg-[#D9FF00] transition-all duration-200'
                 style={{ width: `${Math.max(8, regenProgress)}%` }}
               />
             </div>
+            {appliedReferenceCount > 0 ? (
+              <div className='mt-[8px] text-[11px] font-bold text-[#D9FF00]'>
+                Applying {appliedReferenceCount} refs…
+              </div>
+            ) : null}
           </div>
         )}
       </div>
 
-      <div className={formScrollClass}>
-        <div className={sectionCardClass}>
-          <p className='text-xs font-bold text-[var(--color-ink,#000)] text-balance'>
-            {t('video.storyboard.detail.title')}
-          </p>
-          <div className='grid grid-cols-2 gap-2'>
-            <Select
-              size='small'
-              value={local.shotType}
-              options={SHOT_TYPE_OPTIONS}
-              className={selectClass}
-              onChange={(val) => {
-                setLocal((prev) => ({ ...prev, shotType: val as Shot['shotType'] }));
-                void save({ shotType: val as Shot['shotType'] });
-              }}
-            />
-            <Select
-              size='small'
-              value={local.cameraMove}
-              options={CAMERA_MOVE_OPTIONS}
-              className={selectClass}
-              onChange={(val) => {
-                setLocal((prev) => ({ ...prev, cameraMove: val as Shot['cameraMove'] }));
-                void save({ cameraMove: val as Shot['cameraMove'] });
-              }}
-            />
-          </div>
-          <div className='space-y-1'>
-            <div className='flex items-center justify-between text-xs font-bold text-[var(--color-ink,#000)]'>
-              <span>{t('video.storyboard.detail.duration')}</span>
-              <span className='tabular-nums'>
-                {local.duration}
-                {t('video.storyboard.detail.durationUnit')}
-              </span>
-            </div>
-            <Slider
-              min={1}
-              max={30}
-              step={1}
-              value={local.duration}
-              className='[&_.arco-slider-road]:!h-1 [&_.arco-slider-road]:!bg-black/20 [&_.arco-slider-bar]:!h-1 [&_.arco-slider-bar]:!bg-black [&_.arco-slider-button]:!h-3 [&_.arco-slider-button]:!w-3 [&_.arco-slider-button]:!rounded-none [&_.arco-slider-button]:!border-2 [&_.arco-slider-button]:!border-[var(--color-ink,#000)] [&_.arco-slider-button]:!bg-[var(--color-lime-pop,#D9FF00)]'
-              onChange={(val) => setLocal((prev) => ({ ...prev, duration: val as number }))}
-              onAfterChange={(val) => void save({ duration: val as number })}
-            />
-          </div>
-        </div>
-
-        <div className={sectionCardClass}>
-          <div className={rowClass}>
-            <p className={rowLabelClass}>{t('video.storyboard.detail.goal')}</p>
-            <p className='border border-[var(--color-ink,#000)] bg-[#F7F7F7] px-2 py-1.5 text-sm text-[var(--color-ink,#000)] text-pretty'>
-              {local.goal || '—'}
-            </p>
-          </div>
-          <div className={rowClass}>
-            <p className={rowLabelClass}>{t('video.storyboard.detail.action')}</p>
-            <textarea
-              className={inputClass}
-              rows={2}
-              value={local.action}
-              onChange={(e) => setLocal((prev) => ({ ...prev, action: e.target.value }))}
-              onBlur={(e) => handleFieldBlur('action', e.target.value)}
-            />
-          </div>
-          <div className={rowClass}>
-            <p className={rowLabelClass}>{t('video.storyboard.detail.dialogue')}</p>
-            <textarea
-              className={inputClass}
-              rows={2}
-              value={local.dialogue}
-              onChange={(e) => setLocal((prev) => ({ ...prev, dialogue: e.target.value }))}
-              onBlur={(e) => handleFieldBlur('dialogue', e.target.value)}
-            />
-          </div>
-        </div>
-
-        <div className={sectionCardClass}>
-          <div className='mb-1 flex items-center justify-between'>
-            <p className='text-xs font-bold text-[var(--color-ink,#000)]'>Prompt</p>
-            <Button
-              type='text'
-              size='mini'
-              className='!h-5 !px-1.5 !text-xs'
-              onClick={() => setPromptsExpanded((prev) => !prev)}
+      <div className='grid grid-cols-2 gap-[12px] mb-[32px] shrink-0'>
+        <button
+          onClick={handleToggleLock}
+          disabled={saving}
+          className='flex items-center justify-center gap-[8px] h-[48px] rounded-[10px] border-[1.5px] border-black bg-[#F1F2F4] text-black font-extrabold tracking-wider text-[12px] hover:bg-gray-200 transition-colors disabled:opacity-50'
+        >
+          {local.locked ? (
+            <svg
+              width='14'
+              height='14'
+              viewBox='0 0 24 24'
+              fill='none'
+              stroke='currentColor'
+              strokeWidth='2.5'
+              strokeLinecap='round'
+              strokeLinejoin='round'
             >
-              {promptsExpanded ? t('common.collapse') : t('common.more')}
-            </Button>
-          </div>
-          <p className='text-xs text-t-secondary'>
-            {t('video.storyboard.detail.imagePrompt')}{' '}
-            <span className='text-t-tertiary'>({t('video.storyboard.detail.saveHint')})</span>
-          </p>
+              <rect x='3' y='11' width='18' height='11' rx='2' ry='2'></rect>
+              <path d='M7 11V7a5 5 0 0 1 10 0v4'></path>
+            </svg>
+          ) : (
+            <svg
+              width='14'
+              height='14'
+              viewBox='0 0 24 24'
+              fill='none'
+              stroke='currentColor'
+              strokeWidth='2.5'
+              strokeLinecap='round'
+              strokeLinejoin='round'
+            >
+              <rect x='3' y='11' width='18' height='11' rx='2' ry='2'></rect>
+              <path d='M7 11V7a5 5 0 0 1 9.9-1'></path>
+            </svg>
+          )}
+          {local.locked ? 'UNLOCK SHOT' : 'LOCK SHOT'}
+        </button>
+        <button
+          onClick={handleRegenerate}
+          disabled={!local.imagePrompt || showGeneratingSpin}
+          className='flex items-center justify-center gap-[8px] h-[48px] rounded-[10px] bg-[#D9FF00] text-black font-extrabold tracking-wider text-[12px] hover:bg-[#cbf000] focus:outline-none transition-colors disabled:opacity-50'
+        >
+          <svg
+            width='14'
+            height='14'
+            viewBox='0 0 24 24'
+            fill='none'
+            stroke='currentColor'
+            strokeWidth='2.5'
+            strokeLinecap='round'
+            strokeLinejoin='round'
+          >
+            <polygon points='13 2 3 14 12 14 11 22 21 10 12 10 13 2'></polygon>
+          </svg>
+          GENERATE
+        </button>
+      </div>
+
+      <div className='mb-[24px] shrink-0'>
+        <div className='flex items-center gap-[8px] text-gray-500 font-bold tracking-[0.15em] text-[10px] mb-[12px] uppercase'>
+          <svg
+            width='14'
+            height='14'
+            viewBox='0 0 24 24'
+            fill='none'
+            stroke='currentColor'
+            strokeWidth='2.5'
+            strokeLinecap='round'
+            strokeLinejoin='round'
+          >
+            <path d='M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z'></path>
+            <circle cx='12' cy='13' r='4'></circle>
+          </svg>
+          SHOT TYPE
+        </div>
+        <div className='grid grid-cols-3 gap-[8px]'>
+          {[
+            { label: 'WIDE', match: ['WS', 'EWS'] },
+            { label: 'MEDIUM', match: ['MS'] },
+            { label: 'CLOSE UP', match: ['CU', 'ECU'] },
+          ].map((btn) => {
+            const isActive = btn.match.includes(local.shotType);
+            return (
+              <button
+                key={btn.label}
+                onClick={() => {
+                  const val = btn.match[0] as Shot['shotType'];
+                  setLocal((prev) => (prev ? { ...prev, shotType: val } : prev));
+                  void save({ shotType: val });
+                }}
+                className={`h-[40px] rounded-[8px] border-[1.5px] font-extrabold tracking-wider text-[11px] transition-colors focus:outline-none ${
+                  isActive
+                    ? 'border-[#D9FF00] bg-white shadow-[0_0_0_1px_#D9FF00]'
+                    : 'border-black bg-[#F1F2F4] hover:bg-gray-200'
+                }`}
+              >
+                {btn.label}
+              </button>
+            );
+          })}
+        </div>
+      </div>
+
+      <div className='mb-[24px] shrink-0'>
+        <div className='flex items-center gap-[8px] text-gray-500 font-bold tracking-[0.15em] text-[10px] mb-[12px] uppercase'>
+          <svg
+            width='14'
+            height='14'
+            viewBox='0 0 24 24'
+            fill='none'
+            stroke='currentColor'
+            strokeWidth='2.5'
+            strokeLinecap='round'
+            strokeLinejoin='round'
+          >
+            <line x1='12' y1='5' x2='12' y2='19'></line>
+            <line x1='5' y1='12' x2='19' y2='12'></line>
+          </svg>
+          CAMERA MOVEMENT
+        </div>
+        <select
+          value={local.cameraMove}
+          onChange={(e) => {
+            const val = e.target.value as Shot['cameraMove'];
+            setLocal((prev) => (prev ? { ...prev, cameraMove: val } : prev));
+            void save({ cameraMove: val });
+          }}
+          className='h-[48px] w-full box-border appearance-none rounded-[10px] border-[1.5px] border-black bg-[#F1F2F4] px-[16px] text-[13px] font-semibold text-black outline-none transition-colors focus:border-[#D9FF00]'
+          style={{
+            backgroundImage:
+              "url(\"data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3e%3cpolyline points='6 9 12 15 18 9'%3e%3c/polyline%3e%3c/svg%3e\")",
+            backgroundRepeat: 'no-repeat',
+            backgroundPosition: 'right 14px center',
+            backgroundSize: '16px',
+          }}
+        >
+          {CAMERA_MOVE_OPTIONS.map((opt) => (
+            <option key={opt.value} value={opt.value}>
+              {opt.label}
+            </option>
+          ))}
+        </select>
+      </div>
+
+      <div className='mb-[32px] shrink-0'>
+        <div className='flex items-center gap-[8px] text-gray-500 font-bold tracking-[0.15em] text-[10px] mb-[16px] uppercase'>
+          <svg
+            width='14'
+            height='14'
+            viewBox='0 0 24 24'
+            fill='none'
+            stroke='currentColor'
+            strokeWidth='2.5'
+            strokeLinecap='round'
+            strokeLinejoin='round'
+          >
+            <circle cx='12' cy='12' r='10'></circle>
+            <polyline points='12 6 12 12 16 14'></polyline>
+          </svg>
+          DURATION ({local.duration}S)
+        </div>
+        <Slider
+          min={1}
+          max={30}
+          step={1}
+          value={local.duration}
+          className='[&_.arco-slider-road]:!h-[4px] [&_.arco-slider-road]:!bg-gray-300 [&_.arco-slider-bar]:!h-[4px] [&_.arco-slider-bar]:!bg-black [&_.arco-slider-button]:!w-[16px] [&_.arco-slider-button]:!h-[16px] [&_.arco-slider-button]:!rounded-full [&_.arco-slider-button]:!border-[2.5px] [&_.arco-slider-button]:!border-black [&_.arco-slider-button]:!bg-white'
+          onChange={(val) => setLocal((prev) => (prev ? { ...prev, duration: val as number } : prev))}
+          onAfterChange={(val) => void save({ duration: val as number })}
+        />
+      </div>
+
+      {/* Advanced Text fields */}
+      <div className='space-y-[16px] shrink-0'>
+        <div>
+          <label className='block text-gray-500 font-bold tracking-[0.15em] text-[10px] mb-[8px] uppercase'>GOAL</label>
+          <textarea
+            className='w-full box-border rounded-[10px] border-[1.5px] border-black bg-[#F1F2F4] p-[12px] text-[12px] font-semibold text-black outline-none transition-colors resize-none focus:border-[#D9FF00] focus:bg-white'
+            rows={2}
+            value={local.goal}
+            onChange={(e) => setLocal((prev) => (prev ? { ...prev, goal: e.target.value } : prev))}
+            onBlur={(e) => handleFieldBlur('goal', e.target.value)}
+          />
+        </div>
+        <div>
+          <label className='block text-gray-500 font-bold tracking-[0.15em] text-[10px] mb-[8px] uppercase'>
+            IMAGE PROMPT
+          </label>
           <textarea
             ref={imagePromptRef}
-            className={inputClass}
-            rows={promptsExpanded ? 4 : 2}
+            className='w-full box-border rounded-[10px] border-[1.5px] border-black bg-[#F1F2F4] p-[12px] text-[12px] font-semibold text-black outline-none transition-colors resize-vertical focus:border-[#D9FF00] focus:bg-white'
+            rows={3}
             value={local.imagePrompt}
-            onChange={(e) => setLocal((prev) => ({ ...prev, imagePrompt: e.target.value }))}
+            onChange={(e) => setLocal((prev) => (prev ? { ...prev, imagePrompt: e.target.value } : prev))}
             onKeyDown={(e) => handlePromptKeyDown(e, 'imagePrompt')}
-          />
-
-          <p className='text-xs text-t-secondary'>
-            {t('video.storyboard.detail.videoPrompt')}{' '}
-            <span className='text-t-tertiary'>({t('video.storyboard.detail.saveHint')})</span>
-          </p>
-          <textarea
-            ref={videoPromptRef}
-            className={inputClass}
-            rows={promptsExpanded ? 3 : 2}
-            value={local.videoPrompt}
-            onChange={(e) => setLocal((prev) => ({ ...prev, videoPrompt: e.target.value }))}
-            onKeyDown={(e) => handlePromptKeyDown(e, 'videoPrompt')}
+            onBlur={(e) => handleFieldBlur('imagePrompt', e.target.value)}
           />
         </div>
+        <div>
+          <label className='block text-gray-500 font-bold tracking-[0.15em] text-[10px] mb-[8px] uppercase'>
+            VIDEO PROMPT
+          </label>
+          <textarea
+            ref={videoPromptRef}
+            className='w-full box-border rounded-[10px] border-[1.5px] border-black bg-[#F1F2F4] p-[12px] text-[12px] font-semibold text-black outline-none transition-colors resize-vertical focus:border-[#D9FF00] focus:bg-white'
+            rows={3}
+            value={local.videoPrompt}
+            onChange={(e) => setLocal((prev) => (prev ? { ...prev, videoPrompt: e.target.value } : prev))}
+            onKeyDown={(e) => handlePromptKeyDown(e, 'videoPrompt')}
+            onBlur={(e) => handleFieldBlur('videoPrompt', e.target.value)}
+          />
+        </div>
+      </div>
 
-        {(local.imageHistory?.length ?? 0) > 0 && (
-          <div className={sectionCardClass}>
-            <p className='text-xs font-bold text-[var(--color-ink,#000)]'>{t('video.storyboard.history.title')}</p>
-            <div className='flex gap-1.5 overflow-x-auto'>
-              {local.imageHistory!.slice(0, 8).map((histPath, idx) => (
-                <Button
-                  key={idx}
-                  type='text'
-                  title={t('video.storyboard.history.restore')}
-                  className='!h-9 !w-14 !min-w-14 !overflow-hidden !rounded-none !border !border-[var(--color-ink,#000)] !p-0'
-                  onClick={() => void save({ imagePath: histPath })}
-                >
-                  <img src={toPreviewImageSrc(histPath)} alt='' className='h-full w-full object-cover' loading='lazy' />
-                </Button>
-              ))}
-            </div>
-          </div>
-        )}
+      <div className='mt-[20px] shrink-0 rounded-[10px] border-[1.5px] border-black bg-white p-[12px]'>
+        <div className='flex items-center justify-between mb-[8px]'>
+          <label className='block text-gray-500 font-bold tracking-[0.15em] text-[10px] uppercase'>REFERENCES</label>
+          <span className='text-[10px] font-bold text-black'>#{local.assetRefs?.length ?? 0}</span>
+        </div>
 
-        {local.lockedTokens.length > 0 && (
-          <div className={sectionCardClass}>
-            <p className='text-xs font-bold text-[var(--color-ink,#000)]'>
-              {t('video.storyboard.detail.lockedTokens')}
-            </p>
-            <div className='flex flex-wrap gap-2'>
-              {local.lockedTokens.map((token) => (
-                <Tag key={token} closable onClose={() => handleRemoveToken(token)} size='small'>
-                  {token}
-                </Tag>
-              ))}
-            </div>
-          </div>
-        )}
-
-        {local.qaIssues && local.qaIssues.length > 0 && (
-          <div className={sectionCardClass}>
-            <p className='text-xs font-bold text-[var(--color-ink,#000)]'>{t('video.storyboard.detail.qaIssues')}</p>
-            <div className='flex flex-col gap-2'>
-              {local.qaIssues.map((issue, idx) => (
-                <div key={idx} className='border border-[var(--color-ink,#000)] bg-[#F7F7F7] p-2'>
-                  <p className={`mb-1 text-11px font-medium ${severityColor(issue.severity)}`}>{issue.type}</p>
-                  <p className='mb-1 text-11px text-t-secondary text-pretty'>{issue.description}</p>
-                  {issue.suggestion && (
-                    <Button
-                      type='text'
-                      size='mini'
-                      className='!h-5 !p-0 !text-11px !text-[var(--color-ink,#000)]'
-                      onClick={() => handleFixAndRegenerate(issue)}
-                    >
-                      {t('video.storyboard.detail.fixAndRegenerate')}
-                    </Button>
+        {boundAssets.length > 0 ? (
+          <div className='space-y-[8px] mb-[10px]'>
+            {boundAssets.map((asset) => (
+              <div
+                key={asset.id}
+                className='flex items-center gap-[8px] rounded-[8px] border border-black/20 bg-[#F7F7F7] p-[6px]'
+              >
+                <div className='w-[40px] h-[24px] overflow-hidden rounded-[4px] border border-black/30 bg-white'>
+                  {asset.primaryReferenceImagePath || asset.referenceImagePaths?.[0] ? (
+                    <img
+                      src={toPreviewImageSrc(
+                        asset.primaryReferenceImagePath || asset.referenceImagePaths?.[0],
+                        `${asset.id}|${asset.primaryReferenceImagePath ?? ''}|${asset.referenceImagePaths?.[0] ?? ''}|${asset.referenceImagePaths?.length ?? 0}`
+                      )}
+                      alt={asset.name}
+                      className='w-full h-full object-cover'
+                    />
+                  ) : (
+                    <div className='w-full h-full flex items-center justify-center text-[9px] text-gray-500'>
+                      No Ref
+                    </div>
                   )}
                 </div>
-              ))}
-            </div>
+                <div className='min-w-0 flex-1'>
+                  <div className='text-[11px] font-bold text-black truncate'>{asset.name}</div>
+                </div>
+                <Button
+                  size='mini'
+                  type='text'
+                  className='!h-[22px] !px-[6px] !text-[10px] !font-bold !border !border-black/20 !rounded-[6px]'
+                  onClick={() => void unbindAssetFromShot(asset.id)}
+                >
+                  Unbind
+                </Button>
+              </div>
+            ))}
           </div>
+        ) : (
+          <div className='text-[11px] text-gray-500 mb-[10px]'>No references bound.</div>
         )}
+
+        {unboundAssets.length > 0 ? (
+          <div className='flex flex-wrap gap-[6px]'>
+            {unboundAssets.slice(0, 12).map((asset) => (
+              <Button
+                key={asset.id}
+                size='mini'
+                type='text'
+                className='!h-[24px] !px-[8px] !text-[10px] !font-bold !border !border-black/20 !rounded-[6px]'
+                onClick={() => void bindAssetToShot(asset.id)}
+              >
+                + {asset.name}
+              </Button>
+            ))}
+          </div>
+        ) : null}
       </div>
     </div>
+  );
+
+  return isSidebarMode ? (
+    <Drawer
+      visible={visible}
+      placement='right'
+      width={420}
+      title={null}
+      closable={false}
+      onCancel={onClose}
+      footer={null}
+      className='[&_.arco-drawer-body]:!p-0 [&_.arco-drawer-header]:!hidden'
+    >
+      {content}
+    </Drawer>
+  ) : (
+    <div className='flex h-full w-full flex-col overflow-hidden'>{content}</div>
   );
 };
 

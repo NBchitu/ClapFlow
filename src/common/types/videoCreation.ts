@@ -63,6 +63,10 @@ export type Shot = {
   lockedTokens: string[];
   continuityRefs: ContinuityRefs;
   assetRefs: string[];
+  /** Last resolved references for image generation (best-effort runtime info) */
+  resolvedAssetRefs?: string[];
+  /** Last applied reference image count during generation */
+  appliedReferenceCount?: number;
   duration: number;
   imagePath?: string;
   imageHistory?: string[];
@@ -111,22 +115,29 @@ export type CharacterAsset = {
   name: string;
   description: string;
   appearance: string;
+  /** Prompt fragment for reference-image/fallback guidance */
+  prompt?: string;
   lockedTokens: string[];
   referenceImagePaths?: string[];
+  primaryReferenceImagePath?: string;
 };
 
 export type SceneAsset = {
   id: string;
   name: string;
   description: string;
+  prompt?: string;
   referenceImagePaths?: string[];
+  primaryReferenceImagePath?: string;
 };
 
 export type PropAsset = {
   id: string;
   name: string;
   description: string;
+  prompt?: string;
   referenceImagePaths?: string[];
+  primaryReferenceImagePath?: string;
 };
 
 export type StylePreset = {
@@ -316,6 +327,33 @@ export type DeleteAssetParams = {
   id: string;
 };
 
+export type AddAssetReferenceImagesParams = {
+  projectRoot: string;
+  type: AssetType;
+  id: string;
+  sourcePaths: string[];
+};
+
+export type RemoveAssetReferenceImageParams = {
+  projectRoot: string;
+  type: AssetType;
+  id: string;
+  imagePath: string;
+};
+
+export type SetPrimaryAssetReferenceImageParams = {
+  projectRoot: string;
+  type: AssetType;
+  id: string;
+  imagePath: string;
+};
+
+export type GenerateAssetThreeViewReferenceParams = {
+  projectRoot: string;
+  type: AssetType;
+  id: string;
+};
+
 export type GetAssetsResult = {
   characters: CharacterAsset[];
   scenes: SceneAsset[];
@@ -338,6 +376,10 @@ export type ProjectPaths = {
   charactersDir: string;
   scenesDir: string;
   propsDir: string;
+  assetReferencesDir: string;
+  characterRefsDir: string;
+  sceneRefsDir: string;
+  propRefsDir: string;
   stylePresetsJson: string;
   imagesDir: string;
   videosDir: string;

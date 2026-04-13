@@ -109,8 +109,32 @@ export function initVideoCreationBridge(): void {
     return assetService.deleteAsset(projectRoot, type, id);
   });
 
+  videoCreationBridge.addAssetReferenceImages.provider(async (params) => {
+    return assetService.addAssetReferenceImages(params);
+  });
+
+  videoCreationBridge.removeAssetReferenceImage.provider(async (params) => {
+    return assetService.removeAssetReferenceImage(params);
+  });
+
+  videoCreationBridge.setPrimaryAssetReferenceImage.provider(async (params) => {
+    return assetService.setPrimaryAssetReferenceImage(params);
+  });
+
+  videoCreationBridge.generateAssetThreeViewReference.provider(async (params) => {
+    return assetService.generateAssetThreeViewReference(params);
+  });
+
   videoCreationBridge.applyAssetToShots.provider(async ({ projectRoot, charId, shotIds }) => {
     return assetService.applyCharacterToShots(projectRoot, charId, shotIds);
+  });
+
+  videoCreationBridge.applyAssetsToShots.provider(async ({ projectRoot, assetIds, shotIds }) => {
+    return assetService.applyAssetsToShots(projectRoot, assetIds, shotIds);
+  });
+
+  videoCreationBridge.removeAssetsFromShots.provider(async ({ projectRoot, assetIds, shotIds }) => {
+    return assetService.removeAssetsFromShots(projectRoot, assetIds, shotIds);
   });
 
   // ── Snapshots ────────────────────────────────────────────────

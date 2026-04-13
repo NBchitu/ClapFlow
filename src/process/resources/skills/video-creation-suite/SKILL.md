@@ -66,6 +66,7 @@ Given a `projectRoot` path (ask the user if not provided), create all required d
 ```
 
 **Rules:**
+
 - `shotIds` must list ALL shot IDs in order
 - `id` must be an 8-character random string like `"a3f9bc12"`
 - All paths must be absolute
@@ -73,6 +74,7 @@ Given a `projectRoot` path (ask the user if not provided), create all required d
 ## Step 3: Write Individual Shot Files
 
 **File path pattern**: `{projectRoot}/01-storyboard/shots/shot-NNN.json`
+
 - IDs are zero-padded 3-digit numbers: `shot-001`, `shot-002`, ... `shot-012`
 
 **Schema for each shot file** (must match exactly):
@@ -109,6 +111,7 @@ Given a `projectRoot` path (ask the user if not provided), create all required d
 ```
 
 **Valid values:**
+
 - `shotType`: one of `"EWS"` `"WS"` `"MS"` `"CU"` `"ECU"`
 - `cameraMove`: one of `"static"` `"push"` `"pull"` `"pan"` `"tilt"` `"handheld"`
 - `status`: always `"pending"` when first created
@@ -120,9 +123,10 @@ Given a `projectRoot` path (ask the user if not provided), create all required d
 
 ## Step 4: Fill in Image and Video Prompts
 
-After creating all shot files, update each shot file to add `imagePrompt` and `videoPrompt`, then change `status` to `"prompts-ready"`.
+After creating all shot files, update each shot file to add `imagePrompt`, `videoPrompt`, and `assetRefs`, then change `status` to `"prompts-ready"`.
 
 **imagePrompt format** (English only, ≤150 words):
+
 ```
 cinematic photo, <shot-type-keyword>, <character description>, <action>, <environment>, <lighting>, <style>, 8k, masterpiece
 ```
@@ -130,11 +134,26 @@ cinematic photo, <shot-type-keyword>, <character description>, <action>, <enviro
 Shot type keywords: `EWS`→"extreme wide shot", `WS`→"wide shot full body", `MS`→"medium shot waist up", `CU`→"close up", `ECU`→"extreme close up"
 
 **videoPrompt format** (English only, ≤60 words):
+
 ```
 <camera move phrase>, <subject action>, <mood>
 ```
 
 Camera move phrases: `static`→"camera static locked off", `push`→"slow camera push in", `pull`→"slow camera pull back", `pan`→"smooth camera pan", `tilt`→"camera tilt", `handheld`→"handheld camera slight shake"
+
+Use readable `@AssetName` markers in prompt text for character/scene/prop references (Chinese names allowed, but no spaces in stored asset names).
+
+## Step 4.1: Output Asset Catalog
+
+Also output and write asset JSON files in `02-assets/{characters|scenes|props}`. Each asset should include:
+
+- `name` (no spaces, replace with `_`)
+- `description`
+- `prompt` (for reference image generation/fallback)
+- `referenceImagePaths` (initially empty)
+- optional `lockedTokens` (for characters)
+
+For scene consistency, every storyboard scene should have a matching scene asset (id can reuse `scene-XX`).
 
 ## Step 5: Tell the User to Open the Storyboard
 
@@ -146,12 +165,12 @@ After all files are written, tell the user:
 
 ## Sub-Skills Reference
 
-| Sub-Skill | Purpose |
-|-----------|---------|
-| `director` | Analyze genre, visual style, color palette, camera preferences |
-| `storyboard` | Decompose script into shots with camera language |
-| `continuity` | Fill `continuityRefs` between shots |
-| `prompt` | Generate `imagePrompt` + `videoPrompt` for each shot |
+| Sub-Skill    | Purpose                                                        |
+| ------------ | -------------------------------------------------------------- |
+| `director`   | Analyze genre, visual style, color palette, camera preferences |
+| `storyboard` | Decompose script into shots with camera language               |
+| `continuity` | Fill `continuityRefs` between shots                            |
+| `prompt`     | Generate `imagePrompt` + `videoPrompt` for each shot           |
 
 ## Notes
 

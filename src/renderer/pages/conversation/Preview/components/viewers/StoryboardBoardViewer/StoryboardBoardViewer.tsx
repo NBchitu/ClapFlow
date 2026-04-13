@@ -6,17 +6,18 @@
 
 import { ipcBridge } from '@/common';
 import type { Shot, Storyboard, StoryboardStreamEvent } from '@/common/types/videoCreation';
-import { Button, Radio, Spin } from '@arco-design/web-react';
+import { Spin } from '@arco-design/web-react';
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import AssetLibraryDrawer from './AssetLibraryDrawer';
 import { FlowCanvasView } from './flow';
 import ShotDetailPanel from './ShotDetailPanel';
 import TimelineView from './TimelineView';
+import VideoDetailPanel from './VideoDetailPanel';
 import { useUndoStack } from './hooks/useUndoStack';
 import { deriveProjectRootFromStoryboardPath } from './pathUtils';
 
-type ViewMode = 'canvas' | 'timeline';
+type ViewMode = 'canvas' | 'timeline' | 'assets';
 
 interface StoryboardBoardViewerProps {
   /** storyboard.json raw content string */
@@ -35,9 +36,9 @@ const StoryboardBoardViewer: React.FC<StoryboardBoardViewerProps> = ({ content, 
   const [storyboard, setStoryboard] = useState<Storyboard | null>(null);
   const [shots, setShots] = useState<Map<string, Shot>>(new Map());
   const [selectedShotId, setSelectedShotId] = useState<string | null>(null);
+  const [selectedTrackType, setSelectedTrackType] = useState<'image' | 'video'>('image');
   const [parseError, setParseError] = useState<string | null>(null);
   const [viewMode, setViewMode] = useState<ViewMode>('canvas');
-  const [assetDrawerVisible, setAssetDrawerVisible] = useState(false);
   const [orderedShotIds, setOrderedShotIds] = useState<string[]>([]);
   const [imageGenProgress, setImageGenProgress] = useState<{ completed: number; total: number } | null>(null);
 
@@ -205,27 +206,99 @@ const StoryboardBoardViewer: React.FC<StoryboardBoardViewerProps> = ({ content, 
   const selectedShotSet = new Set(selectedShotId ? [selectedShotId] : []);
 
   return (
-    <div className='flex flex-col h-full bg-[var(--color-paper,#FFFDF5)] overflow-hidden border-2 border-[var(--color-ink,#000)]'>
-      {/* Toolbar */}
-      <div className='flex items-center justify-between px-12px py-8px border-b-2 border-[var(--color-ink,#000)] shrink-0 gap-8px bg-white'>
-        <span className='text-13px text-[var(--color-ink,#000)] font-bold shrink-0'>{t('video.storyboard.title')}</span>
+    <div className='flex flex-col h-full bg-white overflow-hidden border border-gray-200'>
+      <div className='flex items-center justify-between px-[20px] py-[16px] border-b border-gray-200 shrink-0 bg-white relative'>
+        <div className='flex items-center'>
+          {/* Logo */}
+          <div className='flex items-center gap-[14px]'>
+            {/* <div className='w-[44px] h-[44px] bg-[#D9FF00] rounded-[12px] flex items-center justify-center p-0'>
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="black" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
+                <line x1="3" y1="9" x2="21" y2="9"></line>
+                <line x1="9" y1="21" x2="9" y2="9"></line>
+              </svg>
+            </div> */}
+            <div className='flex flex-col'>
+              <span className='text-[24px] font-black tracking-tight text-black'>Storyboard</span>
+              <div className='mt-[2px] mb-[1px] flex items-center gap-[6px]'>
+                <span className='w-[6px] h-[6px] rounded-full bg-[#D9FF00]'></span>
+                <span className='text-[9px] font-medium tracking-[0.08em] text-gray-500 uppercase'>
+                  Project: storyboard.json
+                </span>
+                <span className='text-[9px] font-medium tracking-[0.08em] text-gray-400 uppercase'>V1.0.4</span>
+              </div>
+            </div>
+          </div>
+        </div>
 
-        {/* View switch */}
-        <Radio.Group type='button' size='small' value={viewMode} onChange={(val) => setViewMode(val as ViewMode)}>
-          <Radio value='canvas'>◎</Radio>
-          <Radio value='timeline'>◫</Radio>
-        </Radio.Group>
-
-        <div className='flex items-center gap-4px'>
-          {/* Asset library button */}
-          <Button
-            size='mini'
-            type='text'
-            className='!bg-[var(--color-lime-pop,#D9FF00)] !text-[var(--color-ink,#000)] !border-2 !border-[var(--color-ink,#000)] !rounded-10px !shadow-[4px_4px_0_0_var(--color-ink,#000)]'
-            onClick={() => setAssetDrawerVisible(true)}
+        {/* Navigation */}
+        <div className='flex items-center absolute left-1/2 -translate-x-1/2 gap-[8px]'>
+          <button
+            className={`text-[11px] font-bold tracking-widest px-[18px] py-[8px] transition-colors focus:outline-none ${
+              viewMode === 'canvas'
+                ? 'border-[1.5px] border-black rounded-[8px] bg-[#F2F3F5] text-black'
+                : 'text-gray-500 hover:text-black border-[1.5px] border-transparent rounded-[8px]'
+            }`}
+            onClick={() => setViewMode('canvas')}
           >
-            {t('video.storyboard.asset.title')}
-          </Button>
+            CANVAS
+          </button>
+          <button
+            className={`text-[11px] font-bold tracking-widest px-[18px] py-[8px] transition-colors focus:outline-none ${
+              viewMode === 'timeline'
+                ? 'border-[1.5px] border-black rounded-[8px] bg-[#F2F3F5] text-black'
+                : 'text-gray-500 hover:text-black border-[1.5px] border-transparent rounded-[8px]'
+            }`}
+            onClick={() => setViewMode('timeline')}
+          >
+            TIMELINE
+          </button>
+          <button
+            className={`text-[11px] font-bold tracking-widest px-[18px] py-[8px] transition-colors focus:outline-none ${
+              viewMode === 'assets'
+                ? 'border-[1.5px] border-black rounded-[8px] bg-[#F2F3F5] text-black'
+                : 'text-gray-500 hover:text-black border-[1.5px] border-transparent rounded-[8px]'
+            }`}
+            onClick={() => setViewMode('assets')}
+          >
+            ASSETS
+          </button>
+        </div>
+
+        {/* Right Tools */}
+        <div className='flex items-center gap-[12px]'>
+          <div className='w-[2px] h-[16px] bg-black/60 rounded-full mr-[4px]'></div>
+          <button className='w-[36px] h-[36px] rounded-[8px] border-[1.5px] border-black bg-[#F2F3F5] flex items-center justify-center hover:bg-gray-200 transition-colors'>
+            <svg
+              width='16'
+              height='16'
+              viewBox='0 0 24 24'
+              fill='none'
+              stroke='currentColor'
+              strokeWidth='2.5'
+              strokeLinecap='round'
+              strokeLinejoin='round'
+            >
+              <circle cx='12' cy='12' r='3'></circle>
+              <path d='M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z'></path>
+            </svg>
+          </button>
+          <button className='flex h-[36px] items-center justify-center gap-[6px] rounded-[6px] bg-[#D9FF00] px-[16px] transition-colors hover:bg-[#cbf000]'>
+            <svg
+              width='16'
+              height='16'
+              viewBox='0 0 24 24'
+              fill='none'
+              stroke='black'
+              strokeWidth='2.5'
+              strokeLinecap='round'
+              strokeLinejoin='round'
+            >
+              <line x1='12' y1='5' x2='12' y2='19'></line>
+              <line x1='5' y1='12' x2='19' y2='12'></line>
+            </svg>
+            <span className='mt-[1px] text-[11px] font-bold tracking-[0.1em] text-black'>SHOT</span>
+          </button>
         </div>
       </div>
 
@@ -258,12 +331,23 @@ const StoryboardBoardViewer: React.FC<StoryboardBoardViewerProps> = ({ content, 
           <div className='flex-1 flex items-center justify-center text-t-secondary text-14px'>
             {t('video.storyboard.empty')}
           </div>
+        ) : viewMode === 'assets' ? (
+          <AssetLibraryDrawer
+            visible={true}
+            projectRoot={projectRoot}
+            selectedShotIds={selectedShotSet}
+            onClose={() => setViewMode('canvas')}
+          />
         ) : viewMode === 'timeline' ? (
           <TimelineView
             shots={orderedShots}
             projectRoot={projectRoot}
             selectedShotId={selectedShotId}
-            onSelectShot={(shot) => setSelectedShotId(shot.id)}
+            selectedTrackType={selectedTrackType}
+            onSelectShot={(shot, type) => {
+              setSelectedShotId(shot.id);
+              setSelectedTrackType(type);
+            }}
             onShotsReorder={handleShotsReorder}
           />
         ) : (
@@ -276,23 +360,29 @@ const StoryboardBoardViewer: React.FC<StoryboardBoardViewerProps> = ({ content, 
             onDeleteShot={handleDeleteShot}
             onSelectShot={(shotId) => {
               setSelectedShotId((prev) => (prev === shotId ? null : shotId));
+              setSelectedTrackType('image');
             }}
           />
         )}
 
         {/* Detail panel */}
-        {selectedShot && (
-          <ShotDetailPanel shot={selectedShot} projectRoot={projectRoot} onClose={() => setSelectedShotId(null)} />
-        )}
+        {viewMode !== 'assets' &&
+          (viewMode === 'timeline' && selectedTrackType === 'video' ? (
+            <VideoDetailPanel
+              visible={!!selectedShotId}
+              shot={selectedShot}
+              projectRoot={projectRoot}
+              onClose={() => setSelectedShotId(null)}
+            />
+          ) : (
+            <ShotDetailPanel
+              visible={!!selectedShotId}
+              shot={selectedShot}
+              projectRoot={projectRoot}
+              onClose={() => setSelectedShotId(null)}
+            />
+          ))}
       </div>
-
-      {/* Asset library drawer */}
-      <AssetLibraryDrawer
-        visible={assetDrawerVisible}
-        projectRoot={projectRoot}
-        selectedShotIds={selectedShotSet}
-        onClose={() => setAssetDrawerVisible(false)}
-      />
     </div>
   );
 };

@@ -92,6 +92,7 @@ const ShotCard: React.FC<ShotCardProps> = ({
   const w = CARD_WIDTH[cardSize];
   const h = Math.round(w * CARD_ASPECT);
   const badge = useStatusBadge(shot);
+  const imageCacheKey = `${shot.imagePath ?? ''}|${shot.imageHistory?.[0] ?? ''}|${shot.imageHistory?.length ?? 0}`;
 
   const handleClick = (e: React.MouseEvent) => onClick(shot, e);
 
@@ -137,7 +138,7 @@ const ShotCard: React.FC<ShotCardProps> = ({
           <MechanicalSpinner size={cardSize === 'S' ? 18 : 26} />
         ) : shot.imagePath ? (
           <img
-            src={toPreviewImageSrc(shot.imagePath)}
+            src={toPreviewImageSrc(shot.imagePath, imageCacheKey)}
             alt={shot.goal}
             className='w-full h-full object-cover'
             loading='lazy'
